@@ -33,6 +33,28 @@ export const DEFAULT_TEMPLATES: MessageTemplate[] = [
     updatedAt: new Date().toISOString(),
   },
   {
+    id: 'tpl-whatsapp-pos-demo',
+    tipo: 'WhatsApp',
+    nome: 'Follow-up pós-demonstração',
+    descricao:
+      'Tom consultivo para demonstrar valor após apresentação da gravação de jogadas e propor fechamento.',
+    conteudo:
+      'Olá! Passando para agradecer pela demonstração na [Nome]. Viu como a gravação das jogadas valoriza a arena? Fico à disposição para fechar o plano ideal para [Cidade] — podemos conversar hoje?',
+    isDefault: true,
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'tpl-whatsapp-renovacao',
+    tipo: 'WhatsApp',
+    nome: 'Renovação de cliente',
+    descricao:
+      'Para arenas com status Fechado / Cliente, reforçando resultados e alinhando renovação da temporada.',
+    conteudo:
+      'Olá! Esperamos que as gravações estejam movimentando a [Nome]! Chegou o momento de renovarmos a parceria e liberarmos novos benefícios para a temporada. Podemos alinhar?',
+    isDefault: true,
+    updatedAt: new Date().toISOString(),
+  },
+  {
     id: 'tpl-email-padrao',
     tipo: 'E-mail',
     nome: 'Apresentação Comercial Completa',

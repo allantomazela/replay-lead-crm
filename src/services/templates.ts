@@ -13,7 +13,24 @@ export function getTemplates(): MessageTemplate[] {
     }
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed
+      // Migração suave: se novos modelos padrões foram adicionados no sistema,
+      // preserva edições do usuário e anexa os novos modelos que ainda não estão salvos.
+      let hasChanges = false
+      const currentList: MessageTemplate[] = [...parsed]
+
+      for (const def of DEFAULT_TEMPLATES) {
+        const exists = currentList.some((t) => t.id === def.id)
+        if (!exists) {
+          currentList.push(def)
+          hasChanges = true
+        }
+      }
+
+      if (hasChanges) {
+        localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(currentList))
+      }
+
+      return currentList
     }
     return DEFAULT_TEMPLATES
   } catch (err) {

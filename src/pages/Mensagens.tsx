@@ -34,6 +34,7 @@ export default function Mensagens() {
   const [formConteudo, setFormConteudo] = useState('')
   const [formDescricao, setFormDescricao] = useState('')
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null)
+  const [copiedTemplateId, setCopiedTemplateId] = useState<string | null>(null)
   const [selectedArenaPreviewId, setSelectedArenaPreviewId] = useState<string>('')
   const [arenas, setArenas] = useState(getArenas())
 
@@ -86,6 +87,16 @@ export default function Mensagens() {
     toast({
       title: 'Variável copiada!',
       description: `Código ${tag} copiado para a área de transferência.`,
+    })
+  }
+
+  const handleCopyTemplateContent = (tplId: string, textToCopy: string, tplNome: string) => {
+    navigator.clipboard?.writeText(textToCopy)
+    setCopiedTemplateId(tplId)
+    setTimeout(() => setCopiedTemplateId(null), 1500)
+    toast({
+      title: 'Texto copiado!',
+      description: `Mensagem de "${tplNome}" copiada para a área de transferência.`,
     })
   }
 
@@ -296,15 +307,35 @@ export default function Mensagens() {
                   </div>
                 </div>
 
-                {/* Edit button */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(tpl)}
-                  className="px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-[#7C3AED] font-semibold text-xs transition-colors flex items-center gap-1.5 shrink-0 border border-violet-200"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Editar</span>
-                </button>
+                {/* Actions */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyTemplateContent(tpl.id, previewText, tpl.nome)}
+                    title="Copiar texto pré-formatado com os dados da arena selecionada"
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-1 border border-slate-200"
+                  >
+                    {copiedTemplateId === tpl.id ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700">Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Copiar</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(tpl)}
+                    className="px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-[#7C3AED] font-semibold text-xs transition-colors flex items-center gap-1.5 border border-violet-200"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar</span>
+                  </button>
+                </div>
               </div>
 
               {/* Template Body */}
