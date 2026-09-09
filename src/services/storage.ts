@@ -1,10 +1,50 @@
-import { Arena, HistoricoInteracao, StatusLead, TipoContato } from '../types/crm'
+import { Arena, HistoricoInteracao, RegiaoSalva, StatusLead, TipoContato } from '../types/crm'
 import { SEED_ARENAS, SEED_INTERACOES } from './seedData'
 import { buildDynamicWhatsAppLink } from './templates'
 
 const ARENAS_STORAGE_KEY = 'arenalead_arenas_v1'
 const INTERACOES_STORAGE_KEY = 'arenalead_interacoes_v1'
 const INITIALIZED_KEY = 'arenalead_initialized_v1'
+const REGIOES_STORAGE_KEY = 'replaylead_regioes_v1'
+
+const SEED_REGIOES: RegiaoSalva[] = [
+  {
+    id: 'regiao-sp-beachtennis',
+    nome: 'São Paulo - Beach Tennis',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    modalidade: 'Beach Tennis',
+    criadoEm: '2025-05-01T10:00:00.000Z',
+    ultimaExecucaoEm: '2025-05-10T14:30:00.000Z',
+    totalEncontradas: 18,
+    novasUltimaBusca: 3,
+    arenasIdsAnteriores: [],
+  },
+  {
+    id: 'regiao-campinas-society',
+    nome: 'Campinas - Futebol Society',
+    cidade: 'Campinas',
+    estado: 'SP',
+    modalidade: 'Futebol Society',
+    criadoEm: '2025-05-02T11:00:00.000Z',
+    ultimaExecucaoEm: '2025-05-09T09:15:00.000Z',
+    totalEncontradas: 12,
+    novasUltimaBusca: 0,
+    arenasIdsAnteriores: [],
+  },
+  {
+    id: 'regiao-curitiba-todas',
+    nome: 'Curitiba - Todas as Modalidades',
+    cidade: 'Curitiba',
+    estado: 'PR',
+    modalidade: 'Todos',
+    criadoEm: '2025-05-03T15:00:00.000Z',
+    ultimaExecucaoEm: null,
+    totalEncontradas: 0,
+    novasUltimaBusca: 0,
+    arenasIdsAnteriores: [],
+  },
+]
 
 export function getArenas(): Arena[] {
   try {
@@ -186,12 +226,81 @@ export function clearDismissedAlerts(): void {
   }
 }
 
+export function getRegioesSalvas(): RegiaoSalva[] {
+  try {
+    const raw = localStorage.getItem(REGIOES_STORAGE_KEY)
+    if (!raw) {
+      // Seed default initial regions on first access
+      localStorage.setItem(REGIOES_STORAGE_KEY, JSON.stringify(SEED_REGIOES))
+      return SEED_REGIOES
+    }
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch (err) {
+    console.error('Erro ao ler regiões salvas do localStorage:', err)
+    return []
+  }
+}
+
+export function saveRegioesSalvas(regioes: RegiaoSalva[]): void {
+  try {
+    localStorage.setItem(REGIOES_STORAGE_KEY, JSON.stringify(regioes))
+    window.dispatchEvent(new CustomEvent('replaylead:regioes-updated', { detail: regioes }))
+    window.dispatchEvent(new CustomEvent('arenalead:regioes-updated', { detail: regioes }))
+  } catch (err) {
+    console.error('Erro ao salvar regiões salvas no localStorage:', err)
+  }
+}
+
+export function addRegiaoSalva(
+  regiao: Omit<RegiaoSalva, 'id' | 'criadoEm'> & { id?: string },
+): RegiaoSalva {
+  const all = getRegioesSalvas()
+  const nova: RegiaoSalva = {
+    ...regiao,
+    id: regiao.id || `regiao-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    criadoEm: new Date().toISOString(),
+    ultimaExecucaoEm: regiao.ultimaExecucaoEm ?? null,
+    totalEncontradas: regiao.totalEncontradas ?? 0,
+    novasUltimaBusca: regiao.novasUltimaBusca ?? 0,
+    arenasIdsAnteriores: regiao.arenasIdsAnteriores || [],
+  }
+  const updated = [nova, ...all]
+  saveRegioesSalvas(updated)
+  return nova
+}
+
+export function updateRegiaoSalva(id: string, updates: Partial<RegiaoSalva>): RegiaoSalva | null {
+  const all = getRegioesSalvas()
+  let updatedItem: RegiaoSalva | null = null
+  const next = all.map((r) => {
+    if (r.id === id) {
+      updatedItem = { ...r, ...updates }
+      return updatedItem
+    }
+    return r
+  })
+  if (updatedItem) {
+    saveRegioesSalvas(next)
+  }
+  return updatedItem
+}
+
+export function deleteRegiaoSalva(id: string): void {
+  const all = getRegioesSalvas()
+  const next = all.filter((r) => r.id !== id)
+  saveRegioesSalvas(next)
+}
+
 export function resetToSeedData(): void {
   localStorage.setItem(ARENAS_STORAGE_KEY, JSON.stringify(SEED_ARENAS))
   localStorage.setItem(INTERACOES_STORAGE_KEY, JSON.stringify(SEED_INTERACOES))
+  localStorage.setItem(REGIOES_STORAGE_KEY, JSON.stringify(SEED_REGIOES))
   localStorage.setItem(INITIALIZED_KEY, 'true')
   window.dispatchEvent(new CustomEvent('arenalead:arenas-updated', { detail: SEED_ARENAS }))
   window.dispatchEvent(new CustomEvent('arenalead:interacoes-updated', { detail: SEED_INTERACOES }))
+  window.dispatchEvent(new CustomEvent('replaylead:regioes-updated', { detail: SEED_REGIOES }))
+  window.dispatchEvent(new CustomEvent('arenalead:regioes-updated', { detail: SEED_REGIOES }))
 }
 
 export function cleanPhoneNumber(phone?: string | null): string {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Compass,
   FileSpreadsheet,
@@ -15,13 +15,26 @@ import {
   Square,
   ArrowRight,
   Filter,
+  Bookmark,
+  RefreshCw,
 } from 'lucide-react'
-import { Arena } from '@/types/crm'
+import { Arena, RegiaoSalva } from '@/types/crm'
 import { searchOverpassArenas } from '@/services/overpass'
 import { parseArenaCSV, exportArenasToCSV, CSVParseResult } from '@/services/csvParser'
-import { addMultipleArenas, addArena, getArenas } from '@/services/storage'
+import {
+  addMultipleArenas,
+  addArena,
+  getArenas,
+  getRegioesSalvas,
+  addRegiaoSalva,
+  updateRegiaoSalva,
+  deleteRegiaoSalva,
+} from '@/services/storage'
 import { useToast } from '@/hooks/use-toast'
 import { useNavigate } from 'react-router-dom'
+import { SavedRegionsPanel } from '@/components/SavedRegionsPanel'
+import { SaveRegionModal } from '@/components/SaveRegionModal'
+import { RenameRegionModal, DeleteRegionModal } from '@/components/RegionModals'
 
 export default function Index() {
   const { toast } = useToast()
@@ -46,6 +59,36 @@ export default function Index() {
   // Saved ids tracking to show green badge in table
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
 
+  // New arenas tracking (detected as new during saved region re-run)
+  const [newArenaIds, setNewArenaIds] = useState<Set<string>>(new Set())
+  const [lastExecutedRegion, setLastExecutedRegion] = useState<RegiaoSalva | null>(null)
+
+  // Saved regions state
+  const [regioes, setRegioes] = useState<RegiaoSalva[]>([])
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
+  const [regionToRename, setRegionToRename] = useState<RegiaoSalva | null>(null)
+  const [regionToDelete, setRegionToDelete] = useState<RegiaoSalva | null>(null)
+
+  const loadRegioes = useCallback(() => {
+    setRegioes(getRegioesSalvas())
+  }, [])
+
+  useEffect(() => {
+    loadRegioes()
+
+    const handleRegioesUpdated = () => {
+      loadRegioes()
+    }
+
+    window.addEventListener('replaylead:regioes-updated', handleRegioesUpdated)
+    window.addEventListener('arenalead:regioes-updated', handleRegioesUpdated)
+
+    return () => {
+      window.removeEventListener('replaylead:regioes-updated', handleRegioesUpdated)
+      window.removeEventListener('arenalead:regioes-updated', handleRegioesUpdated)
+    }
+  }, [loadRegioes])
+
   useEffect(() => {
     // Check which arenas exist in storage
     const stored = getArenas()
@@ -59,9 +102,18 @@ export default function Index() {
     setSavedIds(matched)
   }, [results])
 
-  const handleSearchMap = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    if (!cidade.trim()) {
+  const executeSearch = async ({
+    searchCidade,
+    searchEstado,
+    searchModalidade,
+    regiaoAssociada,
+  }: {
+    searchCidade: string
+    searchEstado: string
+    searchModalidade: string
+    regiaoAssociada?: RegiaoSalva
+  }) => {
+    if (!searchCidade.trim()) {
       toast({
         title: 'Cidade não informada',
         description: 'Digite o nome da cidade para buscar arenas no mapa.',
@@ -73,26 +125,74 @@ export default function Index() {
     setIsSearching(true)
     setHasSearched(true)
     setSelectedIds(new Set())
+    setNewArenaIds(new Set())
 
     try {
       const data = await searchOverpassArenas({
-        cidade: cidade.trim(),
-        estado: estado.trim(),
-        modalidade: modalidade === 'Todos' ? undefined : modalidade,
+        cidade: searchCidade.trim(),
+        estado: searchEstado.trim(),
+        modalidade: searchModalidade === 'Todos' ? undefined : searchModalidade,
       })
 
       setResults(data)
 
-      if (data.length > 0) {
+      // Identificar quais arenas já estão salvas no CRM
+      const storedArenas = getArenas()
+      const storedNames = new Set(storedArenas.map((a) => a.nome.toLowerCase().trim()))
+
+      // Identificar quais arenas são NOVAS:
+      // 1. Não estão no CRM (não salvas)
+      // 2. E, se for uma busca de região salva que já tinha execução anterior,
+      //    também checa se o id/nome não constava na busca anterior da região
+      const newIds = new Set<string>()
+      const previousIds = new Set(regiaoAssociada?.arenasIdsAnteriores || [])
+
+      data.forEach((arena) => {
+        const isAlreadyInCrm = storedNames.has(arena.nome.toLowerCase().trim())
+        const isBrandNewInOsm =
+          regiaoAssociada && regiaoAssociada.ultimaExecucaoEm
+            ? !previousIds.has(arena.id)
+            : !isAlreadyInCrm
+
+        if (!isAlreadyInCrm || isBrandNewInOsm) {
+          newIds.add(arena.id)
+        }
+      })
+
+      setNewArenaIds(newIds)
+
+      // Se a busca partiu de uma região salva, atualiza metadados no storage
+      if (regiaoAssociada) {
+        setLastExecutedRegion(regiaoAssociada)
+        const totalNovas = newIds.size
+        updateRegiaoSalva(regiaoAssociada.id, {
+          ultimaExecucaoEm: new Date().toISOString(),
+          totalEncontradas: data.length,
+          novasUltimaBusca: totalNovas,
+          arenasIdsAnteriores: data.map((d) => d.id),
+        })
+        loadRegioes()
+
+        // Toast específico para região agendada/reexecutada
         toast({
-          title: 'Busca concluída!',
-          description: `Encontramos ${data.length} arenas esportivas em ${cidade}.`,
+          title: `Busca concluída: ${regiaoAssociada.nome}`,
+          description: `${data.length} arenas encontradas${
+            totalNovas > 0 ? `, ${totalNovas} novas em relação à última execução.` : '.'
+          }`,
         })
       } else {
-        toast({
-          title: 'Nenhum resultado',
-          description: 'Tente alterar os termos da busca ou deixe o estado em branco.',
-        })
+        setLastExecutedRegion(null)
+        if (data.length > 0) {
+          toast({
+            title: 'Busca concluída!',
+            description: `Encontramos ${data.length} arenas esportivas em ${searchCidade}.`,
+          })
+        } else {
+          toast({
+            title: 'Nenhum resultado',
+            description: 'Tente alterar os termos da busca ou deixe o estado em branco.',
+          })
+        }
       }
     } catch (err: unknown) {
       console.error('Erro na busca Overpass:', err)
@@ -105,6 +205,75 @@ export default function Index() {
     } finally {
       setIsSearching(false)
     }
+  }
+
+  const handleSearchMap = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    // Find matching saved region if exists to track diffs
+    const matching = regioes.find(
+      (r) =>
+        r.cidade.toLowerCase() === cidade.trim().toLowerCase() &&
+        r.estado.toLowerCase() === estado.trim().toLowerCase() &&
+        r.modalidade.toLowerCase() === modalidade.trim().toLowerCase(),
+    )
+    await executeSearch({
+      searchCidade: cidade,
+      searchEstado: estado,
+      searchModalidade: modalidade,
+      regiaoAssociada: matching,
+    })
+  }
+
+  const handleExecuteSavedRegion = async (regiao: RegiaoSalva) => {
+    // Fill current filter inputs with this saved region
+    setCidade(regiao.cidade)
+    setEstado(regiao.estado)
+    setModalidade(regiao.modalidade)
+
+    await executeSearch({
+      searchCidade: regiao.cidade,
+      searchEstado: regiao.estado,
+      searchModalidade: regiao.modalidade,
+      regiaoAssociada: regiao,
+    })
+  }
+
+  const handleSaveCurrentRegion = (nome: string) => {
+    const nova = addRegiaoSalva({
+      nome,
+      cidade: cidade.trim(),
+      estado: estado.trim(),
+      modalidade,
+      totalEncontradas: results.length,
+      novasUltimaBusca: 0,
+      arenasIdsAnteriores: results.map((r) => r.id),
+      ultimaExecucaoEm: results.length > 0 ? new Date().toISOString() : null,
+    })
+    loadRegioes()
+    toast({
+      title: 'Região salva!',
+      description: `"${nova.nome}" adicionada aos seus favoritos para reexecuções rápidas.`,
+    })
+  }
+
+  const handleRenameRegion = (id: string, newNome: string) => {
+    const updated = updateRegiaoSalva(id, { nome: newNome })
+    loadRegioes()
+    if (updated) {
+      toast({
+        title: 'Região renomeada',
+        description: `Nome atualizado para "${updated.nome}".`,
+      })
+    }
+  }
+
+  const handleDeleteRegion = (id: string) => {
+    deleteRegiaoSalva(id)
+    loadRegioes()
+    toast({
+      title: 'Região removida',
+      description: 'O favorito de busca foi excluído com sucesso.',
+    })
   }
 
   const handleCsvFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,14 +486,26 @@ export default function Index() {
               )}
             </button>
 
+            {/* Save as region button */}
+            <button
+              type="button"
+              onClick={() => setIsSaveModalOpen(true)}
+              disabled={!cidade.trim()}
+              className="min-h-[44px] px-4 rounded-xl border border-violet-200 bg-violet-50/70 hover:bg-violet-100 text-violet-800 font-semibold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 active:scale-95 shadow-sm disabled:opacity-50"
+              title="Salvar esta combinação de filtros como região favorita"
+            >
+              <Bookmark className="w-4 h-4 text-violet-600" />
+              <span>Salvar Região</span>
+            </button>
+
             {/* CSV Import Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="min-h-[44px] px-6 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 active:scale-95 shadow-sm"
+              className="min-h-[44px] px-5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 active:scale-95 shadow-sm"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>Importar Planilha CSV</span>
+              <span>Importar CSV</span>
             </button>
 
             {/* Hidden CSV file input */}
@@ -343,6 +524,20 @@ export default function Index() {
           </div>
         </form>
       </div>
+
+      {/* Saved Regions Panel (Favoritos de Busca e Reexecução) */}
+      <SavedRegionsPanel
+        regioes={regioes}
+        currentCidade={cidade}
+        currentEstado={estado}
+        currentModalidade={modalidade}
+        isSearching={isSearching}
+        activeRegiaoId={lastExecutedRegion?.id || null}
+        onExecute={handleExecuteSavedRegion}
+        onSaveCurrent={() => setIsSaveModalOpen(true)}
+        onRename={(r) => setRegionToRename(r)}
+        onDelete={(r) => setRegionToDelete(r)}
+      />
 
       {/* Results Section */}
       {hasSearched && (
@@ -433,13 +628,14 @@ export default function Index() {
                     {results.map((arena, idx) => {
                       const isSelected = selectedIds.has(arena.id)
                       const isSaved = savedIds.has(arena.id)
+                      const isNew = newArenaIds.has(arena.id) && !isSaved
 
                       return (
                         <tr
                           key={arena.id}
                           style={{ animationDelay: `${idx * 40}ms` }}
                           className={`hover:bg-slate-50/80 transition-colors ${
-                            isSelected ? 'bg-violet-50/30' : ''
+                            isSelected ? 'bg-violet-50/30' : isNew ? 'bg-amber-50/20' : ''
                           }`}
                         >
                           <td className="p-4 text-center">
@@ -456,8 +652,14 @@ export default function Index() {
                             </button>
                           </td>
                           <td className="py-3 px-4 font-semibold text-slate-900">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span>{arena.nome}</span>
+                              {isNew && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full shadow-xs">
+                                  <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                                  Novo
+                                </span>
+                              )}
                               {isSaved && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                                   <CheckCircle className="w-3 h-3" />
@@ -516,11 +718,14 @@ export default function Index() {
                 {results.map((arena) => {
                   const isSelected = selectedIds.has(arena.id)
                   const isSaved = savedIds.has(arena.id)
+                  const isNew = newArenaIds.has(arena.id) && !isSaved
 
                   return (
                     <div
                       key={arena.id}
-                      className={`p-4 space-y-2.5 ${isSelected ? 'bg-violet-50/40' : 'bg-white'}`}
+                      className={`p-4 space-y-2.5 ${
+                        isSelected ? 'bg-violet-50/40' : isNew ? 'bg-amber-50/20' : 'bg-white'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2.5">
@@ -536,7 +741,15 @@ export default function Index() {
                             )}
                           </button>
                           <div>
-                            <h4 className="font-bold text-slate-900 text-sm">{arena.nome}</h4>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="font-bold text-slate-900 text-sm">{arena.nome}</h4>
+                              {isNew && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-full">
+                                  <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                                  Novo
+                                </span>
+                              )}
+                            </div>
                             <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               {arena.modalidade}
                             </span>
@@ -664,6 +877,32 @@ export default function Index() {
           </div>
         </div>
       )}
+
+      {/* Save Region Modal */}
+      <SaveRegionModal
+        isOpen={isSaveModalOpen}
+        cidade={cidade}
+        estado={estado}
+        modalidade={modalidade}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSave={handleSaveCurrentRegion}
+      />
+
+      {/* Rename Region Modal */}
+      <RenameRegionModal
+        isOpen={!!regionToRename}
+        regiao={regionToRename}
+        onClose={() => setRegionToRename(null)}
+        onConfirm={handleRenameRegion}
+      />
+
+      {/* Delete Region Modal */}
+      <DeleteRegionModal
+        isOpen={!!regionToDelete}
+        regiao={regionToDelete}
+        onClose={() => setRegionToDelete(null)}
+        onConfirm={handleDeleteRegion}
+      />
     </div>
   )
 }

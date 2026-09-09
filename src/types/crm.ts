@@ -33,6 +33,19 @@ export interface Arena {
   createdAt: string
 }
 
+export interface RegiaoSalva {
+  id: string
+  nome: string
+  cidade: string
+  estado: string
+  modalidade: string
+  criadoEm: string // ISO string
+  ultimaExecucaoEm?: string | null // ISO string
+  totalEncontradas?: number
+  novasUltimaBusca?: number
+  arenasIdsAnteriores?: string[] // IDs das arenas vistas na última execução para diff
+}
+
 export const STATUS_LIST: readonly StatusLead[] = [
   'A Contatar',
   'Contatado',
