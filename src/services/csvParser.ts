@@ -125,7 +125,7 @@ function splitCSVLine(line: string, delimiter: string): string[] {
   return result
 }
 
-export function exportArenasToCSV(arenas: Arena[], filename = 'arenalead_export.csv'): void {
+export function exportArenasToCSV(arenas: Arena[], filename = 'replaylead_export.csv'): void {
   const headers = [
     'Nome',
     'Modalidade',

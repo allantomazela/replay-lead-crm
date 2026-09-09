@@ -25,6 +25,7 @@ import {
   buildWhatsAppLink,
 } from '@/services/storage'
 import { LeadDetailsModal } from '@/components/LeadDetailsModal'
+import { FollowUpAlerts } from '@/components/FollowUpAlerts'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +34,7 @@ export default function Pipeline() {
   const [arenas, setArenas] = useState<Arena[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [modalArenaId, setModalArenaId] = useState<string | null>(null)
+  const [highlightedArenaId, setHighlightedArenaId] = useState<string | null>(null)
 
   // Drag & drop state
   const [draggedArenaId, setDraggedArenaId] = useState<string | null>(null)
@@ -130,7 +132,7 @@ export default function Pipeline() {
       if (targetStatus === 'Fechado / Cliente') {
         toast({
           title: 'Parabéns! Novo cliente fechado! 🎉',
-          description: `"${movingArena.nome}" agora é cliente ArenaLead de gravação de jogadas!`,
+          description: `"${movingArena.nome}" agora é cliente ReplayLead de gravação de jogadas!`,
         })
         addInteracao(
           arenaId,
@@ -221,8 +223,27 @@ export default function Pipeline() {
   const contactedCount = arenas.filter((a) => a.status === 'Contatado').length
   const conversionRate = totalLeads > 0 ? ((closedCount / totalLeads) * 100).toFixed(1) : '0'
 
+  const handleOpenFromFollowUp = (arenaId: string) => {
+    setModalArenaId(arenaId)
+    setHighlightedArenaId(arenaId)
+    // Scroll smoothly to highlight
+    setTimeout(() => {
+      const el = document.getElementById(`arena-card-${arenaId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 100)
+  }
+
   return (
     <div className="space-y-6 max-w-full">
+      {/* Follow-up Alerts Bar at the top of Pipeline */}
+      <FollowUpAlerts
+        onOpenArena={handleOpenFromFollowUp}
+        highlightedArenaId={highlightedArenaId}
+        compact
+      />
+
       {/* Top Controls & Filter Bar */}
       <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         {/* Real-time search filter */}
@@ -329,12 +350,19 @@ export default function Pipeline() {
                       return (
                         <div
                           key={arena.id}
+                          id={`arena-card-${arena.id}`}
                           draggable
                           onDragStart={(e) => handleDragStart(e, arena.id)}
-                          onClick={() => setModalArenaId(arena.id)}
+                          onClick={() => {
+                            setModalArenaId(arena.id)
+                            setHighlightedArenaId(arena.id)
+                          }}
                           style={{ animationDelay: `${cardIdx * 40}ms` }}
                           className={cn(
-                            'group bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer relative select-none animate-fade-in-up',
+                            'group bg-white rounded-2xl p-4 border shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer relative select-none animate-fade-in-up',
+                            highlightedArenaId === arena.id
+                              ? 'border-violet-500 ring-2 ring-violet-400 bg-violet-50/20'
+                              : 'border-slate-200',
                             isDragging
                               ? 'opacity-40 scale-105 shadow-xl rotate-1 ring-2 ring-violet-500'
                               : 'hover:-translate-y-1',

@@ -66,7 +66,7 @@ Espero que estejam bem!
 
 Acompanhamos a atuação da [Nome] em [Cidade]/[Estado] e sabemos da relevância da modalidade [Modalidade] para o público esportivo da região.
 
-Desenvolvemos o sistema ArenaLead de gravação de jogadas e transmissão ao vivo em alta definição para arenas esportivas. Nossa solução permite:
+Desenvolvemos o sistema ReplayLead de gravação de jogadas e transmissão ao vivo em alta definição para arenas esportivas. Nossa solução permite:
 - Gravação automática de lances e replays instantâneos para os atletas;
 - Geração de receita extra para a arena com assinaturas e downloads de partidas;
 - Aumento de visibilidade da [Nome] nas redes sociais dos clientes.
@@ -76,8 +76,8 @@ Gostaríamos de apresentar uma demonstração rápida de 10 minutos com dados de
 Qual seria o melhor dia e horário para conversarmos?
 
 Atenciosamente,
-Equipe Comercial ArenaLead
-(11) 99999-9999 | vendas@arenalead.com.br`,
+Equipe Comercial ReplayLead
+(11) 99999-9999 | vendas@replaylead.com.br`,
     isDefault: true,
     updatedAt: new Date().toISOString(),
   },

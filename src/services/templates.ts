@@ -146,7 +146,7 @@ export function buildDynamicMailtoLink(
     ? getTemplateById(customTemplateId) || getPrimaryTemplate('E-mail')
     : getPrimaryTemplate('E-mail')
   const subject = interpolateVariables(
-    template.assunto || 'Proposta de Gravação de Jogadas - ArenaLead',
+    template.assunto || 'Proposta de Gravação de Jogadas - ReplayLead',
     arena,
   )
   const body = interpolateVariables(template.conteudo, arena)

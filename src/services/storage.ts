@@ -116,21 +116,74 @@ export function addInteracao(
   dataRegistro?: string,
 ): HistoricoInteracao {
   const all = getInteracoes()
+  const recordDate = dataRegistro || new Date().toISOString()
   const newInteracao: HistoricoInteracao = {
     id: `interacao-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     arenaId,
     tipo,
     anotacao,
-    dataRegistro: dataRegistro || new Date().toISOString(),
+    dataRegistro: recordDate,
   }
   saveInteracoes([newInteracao, ...all])
 
-  // If WhatsApp, update arena's ultimoContato
-  if (tipo === 'WhatsApp') {
-    updateArena(arenaId, { ultimoContato: new Date().toISOString() })
-  }
+  // Update arena's ultimoContato
+  updateArena(arenaId, { ultimoContato: recordDate })
 
   return newInteracao
+}
+
+const FOLLOWUP_DAYS_KEY = 'replaylead_followup_days_v1'
+const DISMISSED_ALERTS_KEY = 'replaylead_dismissed_alerts_v1'
+
+export function getFollowUpDaysPreference(): number {
+  try {
+    const raw = localStorage.getItem(FOLLOWUP_DAYS_KEY)
+    if (!raw) return 7
+    const parsed = parseInt(raw, 10)
+    return [7, 14, 30].includes(parsed) ? parsed : 7
+  } catch {
+    return 7
+  }
+}
+
+export function setFollowUpDaysPreference(days: number): void {
+  try {
+    localStorage.setItem(FOLLOWUP_DAYS_KEY, String(days))
+    window.dispatchEvent(new CustomEvent('arenalead:followup-config-updated', { detail: { days } }))
+  } catch (err) {
+    console.error('Erro ao salvar preferência de follow-up:', err)
+  }
+}
+
+export function getDismissedAlerts(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_ALERTS_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+export function dismissFollowUpAlert(arenaId: string, lastContactIso: string): void {
+  try {
+    const current = getDismissedAlerts()
+    current[arenaId] = lastContactIso || new Date().toISOString()
+    localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify(current))
+    window.dispatchEvent(new CustomEvent('arenalead:followup-config-updated'))
+  } catch (err) {
+    console.error('Erro ao dispensar alerta de follow-up:', err)
+  }
+}
+
+export function clearDismissedAlerts(): void {
+  try {
+    localStorage.removeItem(DISMISSED_ALERTS_KEY)
+    window.dispatchEvent(new CustomEvent('arenalead:followup-config-updated'))
+  } catch (err) {
+    console.error('Erro ao limpar alertas dispensados:', err)
+  }
 }
 
 export function resetToSeedData(): void {

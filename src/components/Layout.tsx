@@ -44,7 +44,7 @@ export default function Layout() {
   const Icon = pageInfo.icon
 
   const handleResetData = () => {
-    if (window.confirm('Deseja recarregar os dados de exemplo padrão do ArenaLead CRM?')) {
+    if (window.confirm('Deseja recarregar os dados de exemplo padrão do ReplayLead CRM?')) {
       resetToSeedData()
       resetTemplatesToDefault()
       toast({

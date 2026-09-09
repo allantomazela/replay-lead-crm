@@ -75,7 +75,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg tracking-tight text-white">ArenaLead</span>
+              <span className="font-extrabold text-lg tracking-tight text-white">ReplayLead</span>
               <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-600/30 text-violet-300 border border-violet-500/30">
                 CRM
               </span>
@@ -182,16 +182,16 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-pink-600 flex items-center justify-center text-white font-bold text-sm shadow">
-              AL
+              RL
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white truncate">Equipe Comercial</p>
-              <p className="text-[11px] text-slate-400 truncate">vendas@arenalead.com.br</p>
+              <p className="text-[11px] text-slate-400 truncate">vendas@replaylead.com.br</p>
             </div>
           </div>
           <button
             onClick={() => {
-              window.alert('ArenaLead CRM: Sessão de vendas ativa.')
+              window.alert('ReplayLead CRM: Sessão de vendas ativa.')
             }}
             title="Informações da Sessão"
             className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"

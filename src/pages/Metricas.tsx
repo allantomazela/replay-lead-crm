@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { getArenas, getInteracoes, formatDateBr, formatPhoneNumber } from '@/services/storage'
 import { Arena, HistoricoInteracao, StatusLead, STATUS_LIST, STATUS_CONFIG } from '@/types/crm'
+import { FollowUpAlerts } from '@/components/FollowUpAlerts'
 
 export type PeriodoFiltro =
   | 'ESTE_MES'
@@ -394,6 +395,9 @@ export default function Metricas() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      {/* Follow-up Alerts Banner */}
+      <FollowUpAlerts />
+
       {/* Overview Top Card */}
       <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/90 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
