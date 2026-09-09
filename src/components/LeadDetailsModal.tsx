@@ -224,7 +224,14 @@ export function LeadDetailsModal({
                 </div>
               </div>
               <a
-                href={buildWhatsAppLink(formData.nome || arena.nome, formData.whatsApp)}
+                href={buildWhatsAppLink(formData.nome || arena.nome, formData.whatsApp, {
+                  ...arena,
+                  nome: formData.nome || arena.nome,
+                  cidade: formData.cidade || arena.cidade,
+                  estado: formData.estado || arena.estado,
+                  modalidade: formData.modalidade || arena.modalidade,
+                  endereco: formData.endereco || arena.endereco,
+                })}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => {

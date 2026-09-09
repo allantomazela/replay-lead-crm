@@ -3,13 +3,14 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   Compass,
   Kanban,
+  BarChart3,
+  MessageSquareText,
   Video,
   Menu,
   X,
   LogOut,
   Sparkles,
   Layers,
-  PhoneCall,
   CheckCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,6 +50,18 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       label: 'Pipeline de Vendas',
       icon: Kanban,
       subtitle: 'Funil Kanban de 5 estágios',
+    },
+    {
+      to: '/metricas',
+      label: 'Métricas',
+      icon: BarChart3,
+      subtitle: 'KPIs, conversão e desempenho',
+    },
+    {
+      to: '/mensagens',
+      label: 'Mensagens',
+      icon: MessageSquareText,
+      subtitle: 'Modelos de WhatsApp e E-mail',
     },
   ]
 

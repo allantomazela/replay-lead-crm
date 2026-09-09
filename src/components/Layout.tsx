@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { Menu, RotateCcw, Video, Compass, Kanban } from 'lucide-react'
+import { Menu, RotateCcw, Compass, Kanban, BarChart3, MessageSquareText } from 'lucide-react'
 import { resetToSeedData } from '@/services/storage'
+import { resetTemplatesToDefault } from '@/services/templates'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Layout() {
@@ -18,6 +19,20 @@ export default function Layout() {
         icon: Kanban,
       }
     }
+    if (location.pathname === '/metricas') {
+      return {
+        title: 'Dashboard de Métricas',
+        subtitle: 'KPIs, taxa de conversão, funil por estágio e praças mais ativas',
+        icon: BarChart3,
+      }
+    }
+    if (location.pathname === '/mensagens') {
+      return {
+        title: 'Modelos de Mensagem',
+        subtitle: 'Personalize os modelos de WhatsApp e E-mail com variáveis dinâmicas',
+        icon: MessageSquareText,
+      }
+    }
     return {
       title: 'Dashboard de Prospecção',
       subtitle: 'Descubra arenas esportivas pelo OpenStreetMap ou importe via CSV',
@@ -31,9 +46,10 @@ export default function Layout() {
   const handleResetData = () => {
     if (window.confirm('Deseja recarregar os dados de exemplo padrão do ArenaLead CRM?')) {
       resetToSeedData()
+      resetTemplatesToDefault()
       toast({
         title: 'Dados restaurados!',
-        description: 'Os dados de exemplo foram restaurados com sucesso.',
+        description: 'Os dados de exemplo e modelos de mensagem foram restaurados com sucesso.',
       })
     }
   }

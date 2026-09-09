@@ -163,7 +163,7 @@ export default function Pipeline() {
       return
     }
 
-    const link = buildWhatsAppLink(arena.nome, arena.whatsApp)
+    const link = buildWhatsAppLink(arena.nome, arena.whatsApp, arena)
     window.open(link, '_blank')
 
     // Simultaneously set Status -> "Contatado" and Ultimo_Contato -> today

@@ -1,5 +1,6 @@
 import { Arena, HistoricoInteracao, StatusLead, TipoContato } from '../types/crm'
 import { SEED_ARENAS, SEED_INTERACOES } from './seedData'
+import { buildDynamicWhatsAppLink } from './templates'
 
 const ARENAS_STORAGE_KEY = 'arenalead_arenas_v1'
 const INTERACOES_STORAGE_KEY = 'arenalead_interacoes_v1'
@@ -182,8 +183,14 @@ export function formatDateBr(isoOrDateString?: string | null): string {
   }
 }
 
-export function buildWhatsAppLink(arenaName: string, phone: string): string {
-  const clean = cleanPhoneNumber(phone)
-  const message = `Olá! Vi a estrutura da ${arenaName} e gostaria de apresentar nosso sistema de gravação de jogadas. Com quem posso falar?`
-  return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`
+export function buildWhatsAppLink(
+  arenaName: string,
+  phone: string,
+  arenaContext?: Partial<Arena>,
+): string {
+  return buildDynamicWhatsAppLink({
+    nome: arenaName,
+    whatsApp: phone,
+    ...(arenaContext || {}),
+  })
 }
