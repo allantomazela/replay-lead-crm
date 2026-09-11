@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Compass,
   Kanban,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getArenas } from '@/services/storage'
+import { authClient } from '@/lib/auth'
 
 interface SidebarProps {
   mobileOpen: boolean
@@ -23,19 +24,28 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const session = authClient.useSession()
   const [stats, setStats] = useState({ total: 0, closed: 0 })
 
   useEffect(() => {
-    const updateStats = () => {
-      const arenas = getArenas()
-      setStats({
-        total: arenas.length,
-        closed: arenas.filter((a) => a.status === 'Fechado / Cliente').length,
-      })
+    const updateStats = async () => {
+      try {
+        const arenas = await getArenas()
+        setStats({
+          total: arenas.length,
+          closed: arenas.filter((a) => a.status === 'Fechado / Cliente').length,
+        })
+      } catch {
+        setStats({ total: 0, closed: 0 })
+      }
     }
-    updateStats()
-    window.addEventListener('arenalead:arenas-updated', updateStats)
-    return () => window.removeEventListener('arenalead:arenas-updated', updateStats)
+    void updateStats()
+    const handler = () => {
+      void updateStats()
+    }
+    window.addEventListener('arenalead:arenas-updated', handler)
+    return () => window.removeEventListener('arenalead:arenas-updated', handler)
   }, [])
 
   const navItems = [
@@ -185,15 +195,20 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
               RL
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">Equipe Comercial</p>
-              <p className="text-[11px] text-slate-400 truncate">vendas@replaylead.com.br</p>
+              <p className="text-xs font-semibold text-white truncate">
+                {session.data?.user?.name || 'Usuário'}
+              </p>
+              <p className="text-[11px] text-slate-400 truncate">
+                {session.data?.user?.email || '—'}
+              </p>
             </div>
           </div>
           <button
-            onClick={() => {
-              window.alert('ReplayLead CRM: Sessão de vendas ativa.')
+            onClick={async () => {
+              await authClient.signOut()
+              navigate('/login', { replace: true })
             }}
-            title="Informações da Sessão"
+            title="Sair"
             className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
             aria-label="Sair"
           >

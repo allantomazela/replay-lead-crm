@@ -69,15 +69,15 @@ export default function Index() {
   const [regionToRename, setRegionToRename] = useState<RegiaoSalva | null>(null)
   const [regionToDelete, setRegionToDelete] = useState<RegiaoSalva | null>(null)
 
-  const loadRegioes = useCallback(() => {
-    setRegioes(getRegioesSalvas())
+  const loadRegioes = useCallback(async () => {
+    setRegioes(await getRegioesSalvas())
   }, [])
 
   useEffect(() => {
-    loadRegioes()
+    void loadRegioes()
 
     const handleRegioesUpdated = () => {
-      loadRegioes()
+      void loadRegioes()
     }
 
     window.addEventListener('replaylead:regioes-updated', handleRegioesUpdated)
@@ -90,16 +90,17 @@ export default function Index() {
   }, [loadRegioes])
 
   useEffect(() => {
-    // Check which arenas exist in storage
-    const stored = getArenas()
-    const storedNames = new Set(stored.map((a) => a.nome.toLowerCase()))
-    const matched = new Set<string>()
-    results.forEach((r) => {
-      if (storedNames.has(r.nome.toLowerCase())) {
-        matched.add(r.id)
-      }
-    })
-    setSavedIds(matched)
+    void (async () => {
+      const stored = await getArenas()
+      const storedNames = new Set(stored.map((a) => a.nome.toLowerCase()))
+      const matched = new Set<string>()
+      results.forEach((r) => {
+        if (storedNames.has(r.nome.toLowerCase())) {
+          matched.add(r.id)
+        }
+      })
+      setSavedIds(matched)
+    })()
   }, [results])
 
   const executeSearch = async ({
@@ -137,7 +138,7 @@ export default function Index() {
       setResults(data)
 
       // Identificar quais arenas já estão salvas no CRM
-      const storedArenas = getArenas()
+      const storedArenas = await getArenas()
       const storedNames = new Set(storedArenas.map((a) => a.nome.toLowerCase().trim()))
 
       // Identificar quais arenas são NOVAS:
@@ -165,13 +166,13 @@ export default function Index() {
       if (regiaoAssociada) {
         setLastExecutedRegion(regiaoAssociada)
         const totalNovas = newIds.size
-        updateRegiaoSalva(regiaoAssociada.id, {
+        await updateRegiaoSalva(regiaoAssociada.id, {
           ultimaExecucaoEm: new Date().toISOString(),
           totalEncontradas: data.length,
           novasUltimaBusca: totalNovas,
           arenasIdsAnteriores: data.map((d) => d.id),
         })
-        loadRegioes()
+        await loadRegioes()
 
         // Toast específico para região agendada/reexecutada
         toast({
@@ -238,8 +239,8 @@ export default function Index() {
     })
   }
 
-  const handleSaveCurrentRegion = (nome: string) => {
-    const nova = addRegiaoSalva({
+  const handleSaveCurrentRegion = async (nome: string) => {
+    const nova = await addRegiaoSalva({
       nome,
       cidade: cidade.trim(),
       estado: estado.trim(),
@@ -249,16 +250,16 @@ export default function Index() {
       arenasIdsAnteriores: results.map((r) => r.id),
       ultimaExecucaoEm: results.length > 0 ? new Date().toISOString() : null,
     })
-    loadRegioes()
+    await loadRegioes()
     toast({
       title: 'Região salva!',
       description: `"${nova.nome}" adicionada aos seus favoritos para reexecuções rápidas.`,
     })
   }
 
-  const handleRenameRegion = (id: string, newNome: string) => {
-    const updated = updateRegiaoSalva(id, { nome: newNome })
-    loadRegioes()
+  const handleRenameRegion = async (id: string, newNome: string) => {
+    const updated = await updateRegiaoSalva(id, { nome: newNome })
+    await loadRegioes()
     if (updated) {
       toast({
         title: 'Região renomeada',
@@ -267,9 +268,9 @@ export default function Index() {
     }
   }
 
-  const handleDeleteRegion = (id: string) => {
-    deleteRegiaoSalva(id)
-    loadRegioes()
+  const handleDeleteRegion = async (id: string) => {
+    await deleteRegiaoSalva(id)
+    await loadRegioes()
     toast({
       title: 'Região removida',
       description: 'O favorito de busca foi excluído com sucesso.',
@@ -338,8 +339,8 @@ export default function Index() {
     })
   }
 
-  const handleSaveOne = (arena: Arena) => {
-    addArena({
+  const handleSaveOne = async (arena: Arena) => {
+    await addArena({
       nome: arena.nome,
       modalidade: arena.modalidade,
       whatsApp: arena.whatsApp,
@@ -359,7 +360,7 @@ export default function Index() {
     })
   }
 
-  const handleSaveSelected = () => {
+  const handleSaveSelected = async () => {
     const toSave = results.filter((r) => selectedIds.has(r.id))
     if (toSave.length === 0) {
       toast({
@@ -369,7 +370,7 @@ export default function Index() {
       return
     }
 
-    addMultipleArenas(
+    await addMultipleArenas(
       toSave.map((arena) => ({
         nome: arena.nome,
         modalidade: arena.modalidade,

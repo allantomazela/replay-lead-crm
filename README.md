@@ -1,8 +1,8 @@
-# Projeto Criado com o Skip
+# ReplayLead CRM
 
-Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
+Plataforma comercial para prospecção e vendas de sistemas de gravação de jogadas para arenas esportivas.
 
-## 🚀 Stack Tecnológica
+## Stack Tecnológica
 
 - **React 19** - Biblioteca JavaScript para construção de interfaces
 - **Vite** - Build tool extremamente rápida
@@ -14,65 +14,59 @@ Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
 - **Zod** - Validação de schemas TypeScript-first
 - **Recharts** - Biblioteca de gráficos para React
 
-## 📋 Pré-requisitos
+## Pré-requisitos
 
 - Node.js 18+
-- npm
+- pnpm (recomendado)
 
-## 🔧 Instalação
+## Configuração de ambiente
 
-```bash
-npm install
-```
+1. Copie `.env.example` para `.env-dev` e preencha `DATABASE_URL` (somente servidor).
+2. `VITE_NEON_AUTH_URL` fica em `.env.development` (URL pública do Neon Auth).
+3. Nunca exponha `DATABASE_URL` com prefixo `VITE_`.
 
-## 💻 Scripts Disponíveis
-
-### Desenvolvimento
+## Instalação
 
 ```bash
-# Iniciar servidor de desenvolvimento
-npm start
-# ou
-npm run dev
+pnpm install
 ```
 
-Abre a aplicação em modo de desenvolvimento em [http://localhost:5173](http://localhost:5173).
+## Scripts Disponíveis
+
+### Desenvolvimento (frontend + API)
+
+```bash
+pnpm dev
+```
+
+- Web: [http://localhost:8080](http://localhost:8080)
+- API: [http://localhost:3001](http://localhost:3001)
+
+Rotas públicas: `/login`, `/cadastro` (e-mail/senha e Google via Neon Auth).
+CRM protegido por sessão.
 
 ### Build
 
 ```bash
-# Build para produção
-npm run build
-
-# Build para desenvolvimento
-npm run build:dev
+pnpm build
+pnpm build:dev
 ```
-
-Gera os arquivos otimizados para produção na pasta `dist/`.
 
 ### Preview
 
 ```bash
-# Visualizar build de produção localmente
-npm run preview
+pnpm preview
 ```
-
-Permite visualizar a build de produção localmente antes do deploy.
 
 ### Linting e Formatação
 
 ```bash
-# Executar linter
-npm run lint
-
-# Executar linter e corrigir problemas automaticamente
-npm run lint:fix
-
-# Formatar código com Oxfmt
-npm run format
+pnpm lint
+pnpm lint:fix
+pnpm format
 ```
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 .
@@ -82,50 +76,3 @@ npm run format
 ├── node_modules/     # Dependências (gerado)
 └── package.json      # Configurações e dependências do projeto
 ```
-
-## 🎨 Componentes UI
-
-Este template inclui uma biblioteca completa de componentes Shadcn UI baseados em Radix UI:
-
-- Accordion
-- Alert Dialog
-- Avatar
-- Button
-- Checkbox
-- Dialog
-- Dropdown Menu
-- Form
-- Input
-- Label
-- Select
-- Switch
-- Tabs
-- Toast
-- Tooltip
-- E muito mais...
-
-## 📝 Ferramentas de Qualidade de Código
-
-- **TypeScript**: Tipagem estática
-- **Oxlint**: Linter extremamente rápido
-- **Oxfmt**: Formatação automática de código
-
-## 🔄 Workflow de Desenvolvimento
-
-1. Instale as dependências: `npm install`
-2. Inicie o servidor de desenvolvimento: `npm start`
-3. Faça suas alterações
-4. Verifique o código: `npm run lint`
-5. Formate o código: `npm run format`
-6. Crie a build: `npm run build`
-7. Visualize a build: `npm run preview`
-
-## 📦 Build e Deploy
-
-Para criar uma build otimizada para produção:
-
-```bash
-npm run build
-```
-
-Os arquivos otimizados serão gerados na pasta `dist/` e estarão prontos para deploy.

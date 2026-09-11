@@ -54,26 +54,34 @@ export function FollowUpAlerts({
   const { toast } = useToast()
   const [arenas, setArenas] = useState<Arena[]>([])
   const [interacoes, setInteracoes] = useState<HistoricoInteracao[]>([])
-  const [daysThreshold, setDaysThreshold] = useState<number>(() => getFollowUpDaysPreference())
-  const [dismissedMap, setDismissedMap] = useState<Record<string, string>>(() =>
-    getDismissedAlerts(),
-  )
+  const [daysThreshold, setDaysThreshold] = useState<number>(7)
+  const [dismissedMap, setDismissedMap] = useState<Record<string, string>>({})
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
 
-  const reloadData = () => {
-    setArenas(getArenas())
-    setInteracoes(getInteracoes())
-    setDismissedMap(getDismissedAlerts())
+  const reloadData = async () => {
+    const [nextArenas, nextInteracoes, nextDismissed] = await Promise.all([
+      getArenas(),
+      getInteracoes(),
+      getDismissedAlerts(),
+    ])
+    setArenas(nextArenas)
+    setInteracoes(nextInteracoes)
+    setDismissedMap(nextDismissed)
   }
 
   useEffect(() => {
-    reloadData()
+    void reloadData()
+    void getFollowUpDaysPreference().then(setDaysThreshold)
 
-    const handleArenas = () => reloadData()
-    const handleInteracoes = () => reloadData()
+    const handleArenas = () => {
+      void reloadData()
+    }
+    const handleInteracoes = () => {
+      void reloadData()
+    }
     const handleConfig = () => {
-      setDaysThreshold(getFollowUpDaysPreference())
-      setDismissedMap(getDismissedAlerts())
+      void getFollowUpDaysPreference().then(setDaysThreshold)
+      void getDismissedAlerts().then(setDismissedMap)
     }
 
     window.addEventListener('arenalead:arenas-updated', handleArenas)
@@ -177,27 +185,27 @@ export function FollowUpAlerts({
     return list.sort((a, b) => b.daysInactive - a.daysInactive)
   }, [arenas, interactionStatsMap, daysThreshold, dismissedMap])
 
-  const handleThresholdChange = (days: number) => {
+  const handleThresholdChange = async (days: number) => {
     setDaysThreshold(days)
-    setFollowUpDaysPreference(days)
+    await setFollowUpDaysPreference(days)
     toast({
       title: `Alerta configurado para ${days} dias`,
       description: `Listando arenas sem contato há mais de ${days} dias nos estágios A Contatar, Contatado e Em Negociação.`,
     })
   }
 
-  const handleMarkContactedNow = (item: FollowUpItem, e?: React.MouseEvent) => {
+  const handleMarkContactedNow = async (item: FollowUpItem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
     const nowIso = new Date().toISOString()
     const isNew = item.arena.status === 'A Contatar'
     const newStatus = isNew ? 'Contatado' : item.arena.status
 
-    updateArena(item.arena.id, {
+    await updateArena(item.arena.id, {
       ultimoContato: nowIso,
       status: newStatus,
     })
 
-    addInteracao(
+    await addInteracao(
       item.arena.id,
       'WhatsApp',
       `Follow-up registrado via alerta de inatividade (${item.daysInactive} dias sem contato).`,
@@ -210,10 +218,10 @@ export function FollowUpAlerts({
     })
   }
 
-  const handleDismiss = (item: FollowUpItem, e?: React.MouseEvent) => {
+  const handleDismiss = async (item: FollowUpItem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
-    dismissFollowUpAlert(item.arena.id, item.referenceDate.toISOString())
-    setDismissedMap(getDismissedAlerts())
+    await dismissFollowUpAlert(item.arena.id, item.referenceDate.toISOString())
+    setDismissedMap(await getDismissedAlerts())
     toast({
       title: 'Alerta dispensado',
       description: `O alerta para "${item.arena.nome}" foi ocultado até o próximo contato.`,
@@ -309,7 +317,9 @@ export function FollowUpAlerts({
             <button
               type="button"
               onClick={() => {
-                clearDismissedAlerts()
+                clearDismissedAlerts().then(() => {
+                  void getDismissedAlerts().then(setDismissedMap)
+                })
                 setDismissedMap({})
                 toast({
                   title: 'Alertas restaurados',

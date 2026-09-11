@@ -43,13 +43,17 @@ export default function Layout() {
   const pageInfo = getPageInfo()
   const Icon = pageInfo.icon
 
-  const handleResetData = () => {
-    if (window.confirm('Deseja recarregar os dados de exemplo padrão do ReplayLead CRM?')) {
-      resetToSeedData()
-      resetTemplatesToDefault()
+  const handleResetData = async () => {
+    if (
+      window.confirm(
+        'Deseja restaurar apenas os modelos de mensagem padrão? Os leads no Neon não serão apagados.',
+      )
+    ) {
+      await resetTemplatesToDefault()
+      await resetToSeedData()
       toast({
-        title: 'Dados restaurados!',
-        description: 'Os dados de exemplo e modelos de mensagem foram restaurados com sucesso.',
+        title: 'Modelos restaurados!',
+        description: 'Os modelos de mensagem padrão foram restaurados com sucesso.',
       })
     }
   }

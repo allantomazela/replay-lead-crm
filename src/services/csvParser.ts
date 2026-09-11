@@ -1,5 +1,5 @@
 import { Arena } from '../types/crm'
-import { cleanPhoneNumber } from './storage'
+import { cleanPhoneNumber } from '@/lib/format'
 
 export interface CSVParseResult {
   arenas: Arena[]
@@ -71,7 +71,7 @@ export function parseArenaCSV(csvContent: string): CSVParseResult {
     const getVal = (idx: number) => (idx >= 0 && cols[idx] ? cols[idx].trim() : '')
 
     const nome = getVal(idxNome) || (idxNome === -1 && cols[0] ? cols[0] : '')
-    if (!nome) continue // Skip lines with no name
+    if (!nome) continue // Ignora linhas sem nome
 
     const modalidade = getVal(idxModalidade) || 'Beach Tennis'
     const rawPhone = getVal(idxWhatsApp)

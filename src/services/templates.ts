@@ -1,108 +1,74 @@
 import { MessageTemplate, DEFAULT_TEMPLATES } from '@/types/templates'
 import { Arena } from '@/types/crm'
-import { cleanPhoneNumber } from './storage'
+import { apiFetch } from '@/lib/api'
+import { cleanPhoneNumber } from '@/lib/format'
 
-const TEMPLATES_STORAGE_KEY = 'arenalead_message_templates_v1'
+let templatesCache: MessageTemplate[] = []
 
-export function getTemplates(): MessageTemplate[] {
-  try {
-    const raw = localStorage.getItem(TEMPLATES_STORAGE_KEY)
-    if (!raw) {
-      localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(DEFAULT_TEMPLATES))
-      return DEFAULT_TEMPLATES
-    }
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      // Migração suave: se novos modelos padrões foram adicionados no sistema,
-      // preserva edições do usuário e anexa os novos modelos que ainda não estão salvos.
-      let hasChanges = false
-      const currentList: MessageTemplate[] = [...parsed]
-
-      for (const def of DEFAULT_TEMPLATES) {
-        const exists = currentList.some((t) => t.id === def.id)
-        if (!exists) {
-          currentList.push(def)
-          hasChanges = true
-        }
-      }
-
-      if (hasChanges) {
-        localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(currentList))
-      }
-
-      return currentList
-    }
-    return DEFAULT_TEMPLATES
-  } catch (err) {
-    console.error('Erro ao ler modelos de mensagem do localStorage:', err)
-    return DEFAULT_TEMPLATES
-  }
+function emitTemplates(detail: MessageTemplate[]) {
+  templatesCache = detail
+  window.dispatchEvent(new CustomEvent('arenalead:templates-updated', { detail }))
 }
 
-export function saveTemplates(templates: MessageTemplate[]): void {
-  try {
-    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates))
-    window.dispatchEvent(new CustomEvent('arenalead:templates-updated', { detail: templates }))
-  } catch (err) {
-    console.error('Erro ao salvar modelos de mensagem no localStorage:', err)
-  }
+export async function getTemplates(): Promise<MessageTemplate[]> {
+  const list = await apiFetch<MessageTemplate[]>('/api/templates')
+  templatesCache = list
+  return list
 }
 
-export function getTemplateById(id: string): MessageTemplate | undefined {
-  return getTemplates().find((t) => t.id === id)
+export async function saveTemplates(templates: MessageTemplate[]): Promise<void> {
+  emitTemplates(templates)
 }
 
-export function getPrimaryTemplate(tipo: 'WhatsApp' | 'E-mail'): MessageTemplate {
-  const all = getTemplates()
+export async function getTemplateById(id: string): Promise<MessageTemplate | undefined> {
+  const all = templatesCache.length ? templatesCache : await getTemplates()
+  return all.find((t) => t.id === id)
+}
+
+export async function getPrimaryTemplate(tipo: 'WhatsApp' | 'E-mail'): Promise<MessageTemplate> {
+  const all = templatesCache.length ? templatesCache : await getTemplates()
   const found = all.find((t) => t.tipo === tipo)
   if (found) return found
   const fallback = DEFAULT_TEMPLATES.find((t) => t.tipo === tipo)
   return fallback || DEFAULT_TEMPLATES[0]
 }
 
-export function updateTemplate(
+export async function updateTemplate(
   id: string,
   updates: Partial<Omit<MessageTemplate, 'id'>>,
-): MessageTemplate | null {
-  const all = getTemplates()
-  let updated: MessageTemplate | null = null
-  const next = all.map((t) => {
-    if (t.id === id) {
-      updated = {
-        ...t,
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      }
-      return updated
-    }
-    return t
-  })
-  if (updated) {
-    saveTemplates(next)
+): Promise<MessageTemplate | null> {
+  try {
+    const updated = await apiFetch<MessageTemplate>(`/api/templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    })
+    const all = await getTemplates()
+    emitTemplates(all)
+    return updated
+  } catch {
+    return null
   }
-  return updated
 }
 
-export function resetTemplatesToDefault(): MessageTemplate[] {
-  saveTemplates(DEFAULT_TEMPLATES)
-  return DEFAULT_TEMPLATES
+export async function resetTemplatesToDefault(): Promise<MessageTemplate[]> {
+  const list = await apiFetch<MessageTemplate[]>('/api/templates/reset', { method: 'POST' })
+  emitTemplates(list)
+  return list
 }
 
-export function resetSingleTemplate(id: string): MessageTemplate | null {
-  const def = DEFAULT_TEMPLATES.find((t) => t.id === id)
-  if (!def) return null
-  return updateTemplate(id, {
-    nome: def.nome,
-    assunto: def.assunto,
-    conteudo: def.conteudo,
-    descricao: def.descricao,
-  })
+export async function resetSingleTemplate(id: string): Promise<MessageTemplate | null> {
+  try {
+    const updated = await apiFetch<MessageTemplate>(`/api/templates/${id}/reset`, {
+      method: 'POST',
+    })
+    const all = await getTemplates()
+    emitTemplates(all)
+    return updated
+  } catch {
+    return null
+  }
 }
 
-/**
- * Replaces placeholders [Nome], [Cidade], [Estado], [Modalidade], [Endereco]
- * with the arena's actual data.
- */
 export function interpolateVariables(templateText: string, arena: Partial<Arena>): string {
   if (!templateText) return ''
   const nome = arena.nome || 'Arena'
@@ -119,32 +85,32 @@ export function interpolateVariables(templateText: string, arena: Partial<Arena>
     .replace(/\[Endereco\]/gi, endereco)
 }
 
-/**
- * Builds WhatsApp wa.me URL using the current saved template
- */
 export function buildDynamicWhatsAppLink(
   arena: Partial<Arena> & { nome: string; whatsApp?: string },
   customTemplateId?: string,
 ): string {
   const clean = cleanPhoneNumber(arena.whatsApp || '')
-  const template = customTemplateId
-    ? getTemplateById(customTemplateId) || getPrimaryTemplate('WhatsApp')
-    : getPrimaryTemplate('WhatsApp')
+  const template =
+    (customTemplateId
+      ? templatesCache.find((t) => t.id === customTemplateId)
+      : templatesCache.find((t) => t.tipo === 'WhatsApp')) ||
+    DEFAULT_TEMPLATES.find((t) => t.tipo === 'WhatsApp') ||
+    DEFAULT_TEMPLATES[0]
   const body = interpolateVariables(template.conteudo, arena)
   return `https://wa.me/${clean}?text=${encodeURIComponent(body)}`
 }
 
-/**
- * Builds mailto: link using the current saved email template
- */
 export function buildDynamicMailtoLink(
   arena: Partial<Arena> & { nome: string; email?: string },
   customTemplateId?: string,
 ): string {
   if (!arena.email) return ''
-  const template = customTemplateId
-    ? getTemplateById(customTemplateId) || getPrimaryTemplate('E-mail')
-    : getPrimaryTemplate('E-mail')
+  const template =
+    (customTemplateId
+      ? templatesCache.find((t) => t.id === customTemplateId)
+      : templatesCache.find((t) => t.tipo === 'E-mail')) ||
+    DEFAULT_TEMPLATES.find((t) => t.tipo === 'E-mail') ||
+    DEFAULT_TEMPLATES[0]
   const subject = interpolateVariables(
     template.assunto || 'Proposta de Gravação de Jogadas - ReplayLead',
     arena,
@@ -153,4 +119,8 @@ export function buildDynamicMailtoLink(
   return `mailto:${arena.email}?subject=${encodeURIComponent(
     subject,
   )}&body=${encodeURIComponent(body)}`
+}
+
+export async function warmTemplatesCache(): Promise<void> {
+  await getTemplates()
 }

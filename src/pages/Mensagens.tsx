@@ -23,6 +23,7 @@ import {
   interpolateVariables,
 } from '@/services/templates'
 import { getArenas, formatDateBr } from '@/services/storage'
+import { Arena } from '@/types/crm'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Mensagens() {
@@ -36,22 +37,22 @@ export default function Mensagens() {
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null)
   const [copiedTemplateId, setCopiedTemplateId] = useState<string | null>(null)
   const [selectedArenaPreviewId, setSelectedArenaPreviewId] = useState<string>('')
-  const [arenas, setArenas] = useState(getArenas())
+  const [arenas, setArenas] = useState<Arena[]>([])
 
-  const loadTemplates = () => {
-    const list = getTemplates()
+  const loadTemplates = async () => {
+    const list = await getTemplates()
     setTemplates(list)
   }
 
   useEffect(() => {
-    loadTemplates()
-    setArenas(getArenas())
+    void loadTemplates()
+    void getArenas().then(setArenas)
 
     const handleTemplatesUpdated = () => {
-      loadTemplates()
+      void loadTemplates()
     }
     const handleArenasUpdated = () => {
-      setArenas(getArenas())
+      void getArenas().then(setArenas)
     }
 
     window.addEventListener('arenalead:templates-updated', handleTemplatesUpdated)
@@ -100,7 +101,7 @@ export default function Mensagens() {
     })
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingTemplate) return
 
@@ -113,7 +114,7 @@ export default function Mensagens() {
       return
     }
 
-    updateTemplate(editingTemplate.id, {
+    await updateTemplate(editingTemplate.id, {
       nome: formNome.trim(),
       assunto: editingTemplate.tipo === 'E-mail' ? formAssunto.trim() : undefined,
       conteudo: formConteudo.trim(),
@@ -128,9 +129,9 @@ export default function Mensagens() {
     handleCloseModal()
   }
 
-  const handleResetSingle = (id: string, nome: string) => {
+  const handleResetSingle = async (id: string, nome: string) => {
     if (window.confirm(`Deseja restaurar o modelo "${nome}" para o texto padrão inicial?`)) {
-      resetSingleTemplate(id)
+      await resetSingleTemplate(id)
       toast({
         title: 'Modelo restaurado',
         description: 'O texto padrão original foi reestabelecido.',
@@ -138,13 +139,13 @@ export default function Mensagens() {
     }
   }
 
-  const handleResetAll = () => {
+  const handleResetAll = async () => {
     if (
       window.confirm(
         'Deseja restaurar TODOS os modelos de mensagem para o padrão original do sistema?',
       )
     ) {
-      resetTemplatesToDefault()
+      await resetTemplatesToDefault()
       toast({
         title: 'Modelos restaurados!',
         description: 'Todos os modelos retornaram ao estado padrão.',

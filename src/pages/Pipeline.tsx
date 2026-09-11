@@ -48,13 +48,15 @@ export default function Pipeline() {
   const [quickCidade, setQuickCidade] = useState('')
   const [quickEstado, setQuickEstado] = useState('SP')
 
-  const loadArenas = () => {
-    setArenas(getArenas())
+  const loadArenas = async () => {
+    setArenas(await getArenas())
   }
 
   useEffect(() => {
-    loadArenas()
-    const handleUpdate = () => loadArenas()
+    void loadArenas()
+    const handleUpdate = () => {
+      void loadArenas()
+    }
     window.addEventListener('arenalead:arenas-updated', handleUpdate)
     return () => window.removeEventListener('arenalead:arenas-updated', handleUpdate)
   }, [])
@@ -108,7 +110,7 @@ export default function Pipeline() {
     setDragOverCol(null)
   }
 
-  const handleDrop = (e: React.DragEvent, targetStatus: StatusLead) => {
+  const handleDrop = async (e: React.DragEvent, targetStatus: StatusLead) => {
     e.preventDefault()
     setDragOverCol(null)
     const arenaId = e.dataTransfer.getData('text/plain') || draggedArenaId
@@ -120,21 +122,19 @@ export default function Pipeline() {
       return
     }
 
-    // Update status
     const previousStatus = movingArena.status
-    const updated = updateArena(arenaId, { status: targetStatus })
+    const updated = await updateArena(arenaId, { status: targetStatus })
     setDraggedArenaId(null)
 
     if (updated) {
-      loadArenas()
+      await loadArenas()
 
-      // Check if moving to "Fechado / Cliente"
       if (targetStatus === 'Fechado / Cliente') {
         toast({
           title: 'Parabéns! Novo cliente fechado! 🎉',
           description: `"${movingArena.nome}" agora é cliente ReplayLead de gravação de jogadas!`,
         })
-        addInteracao(
+        await addInteracao(
           arenaId,
           'WhatsApp',
           'Lead movido para FECHADO / CLIENTE no Pipeline de Vendas 🎉.',
@@ -144,7 +144,7 @@ export default function Pipeline() {
           title: `Status atualizado: ${targetStatus}`,
           description: `"${movingArena.nome}" movido de "${previousStatus}" para "${targetStatus}".`,
         })
-        addInteracao(
+        await addInteracao(
           arenaId,
           'Ligação',
           `Movido no funil de [${previousStatus}] para [${targetStatus}].`,
@@ -153,9 +153,8 @@ export default function Pipeline() {
     }
   }
 
-  // WhatsApp quick button click handler
-  const handleWhatsAppQuickAction = (e: React.MouseEvent, arena: Arena) => {
-    e.stopPropagation() // Don't open the modal
+  const handleWhatsAppQuickAction = async (e: React.MouseEvent, arena: Arena) => {
+    e.stopPropagation()
     if (!arena.whatsApp) {
       toast({
         title: 'Sem WhatsApp cadastrado',
@@ -168,18 +167,17 @@ export default function Pipeline() {
     const link = buildWhatsAppLink(arena.nome, arena.whatsApp, arena)
     window.open(link, '_blank')
 
-    // Simultaneously set Status -> "Contatado" and Ultimo_Contato -> today
     const nowIso = new Date().toISOString()
-    updateArena(arena.id, {
+    await updateArena(arena.id, {
       status: 'Contatado',
       ultimoContato: nowIso,
     })
-    addInteracao(
+    await addInteracao(
       arena.id,
       'WhatsApp',
       'Contato rápido iniciado via WhatsApp com a mensagem padrão de apresentação.',
     )
-    loadArenas()
+    await loadArenas()
 
     toast({
       title: 'Contato registrado via WhatsApp!',
@@ -187,11 +185,11 @@ export default function Pipeline() {
     })
   }
 
-  const handleQuickAddSubmit = (e: React.FormEvent) => {
+  const handleQuickAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!quickNome.trim()) return
 
-    const created = addArena({
+    const created = await addArena({
       nome: quickNome.trim(),
       modalidade: quickModalidade,
       whatsApp: quickPhone.replace(/\D/g, ''),
@@ -204,7 +202,7 @@ export default function Pipeline() {
       observacoes: 'Cadastrado rapidamente pelo Pipeline.',
     })
 
-    loadArenas()
+    await loadArenas()
     setIsQuickAddOpen(false)
     setQuickNome('')
     setQuickPhone('')
@@ -542,10 +540,12 @@ export default function Pipeline() {
           arenaId={modalArenaId}
           arenas={arenas}
           onClose={() => setModalArenaId(null)}
-          onArenaUpdated={() => loadArenas()}
-          onArenaDeleted={(id) => {
-            deleteArena(id)
-            loadArenas()
+          onArenaUpdated={() => {
+            void loadArenas()
+          }}
+          onArenaDeleted={async (id) => {
+            await deleteArena(id)
+            await loadArenas()
           }}
         />
       )}

@@ -7,8 +7,11 @@ import Index from './pages/Index'
 import Pipeline from './pages/Pipeline'
 import Metricas from './pages/Metricas'
 import Mensagens from './pages/Mensagens'
+import Login from './pages/Login'
+import Cadastro from './pages/Cadastro'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
+import { ProtectedRoute, PublicOnlyRoute } from './components/ProtectedRoute'
 
 const App = () => (
   <BrowserRouter>
@@ -16,12 +19,20 @@ const App = () => (
       <Toaster />
       <Sonner position="top-right" />
       <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Index />} />
-          <Route path="/pipeline" element={<Pipeline />} />
-          <Route path="/metricas" element={<Metricas />} />
-          <Route path="/mensagens" element={<Mensagens />} />
+        <Route element={<PublicOnlyRoute />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Cadastro />} />
         </Route>
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Index />} />
+            <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/metricas" element={<Metricas />} />
+            <Route path="/mensagens" element={<Mensagens />} />
+          </Route>
+        </Route>
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </TooltipProvider>

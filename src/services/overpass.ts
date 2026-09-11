@@ -1,5 +1,5 @@
 import { Arena } from '../types/crm'
-import { cleanPhoneNumber } from './storage'
+import { cleanPhoneNumber } from '@/lib/format'
 
 export interface OverpassElement {
   type: string

@@ -58,16 +58,21 @@ export default function Metricas() {
   const [selectedFunnelStatus, setSelectedFunnelStatus] = useState<StatusLead | 'ALL'>('ALL')
   const [selectedCityFilter, setSelectedCityFilter] = useState<string | null>(null)
 
-  const loadData = () => {
-    setArenas(getArenas())
-    setInteracoes(getInteracoes())
+  const loadData = async () => {
+    const [nextArenas, nextInteracoes] = await Promise.all([getArenas(), getInteracoes()])
+    setArenas(nextArenas)
+    setInteracoes(nextInteracoes)
   }
 
   useEffect(() => {
-    loadData()
+    void loadData()
 
-    const handleArenas = () => loadData()
-    const handleInteracoes = () => loadData()
+    const handleArenas = () => {
+      void loadData()
+    }
+    const handleInteracoes = () => {
+      void loadData()
+    }
 
     window.addEventListener('arenalead:arenas-updated', handleArenas)
     window.addEventListener('arenalead:interacoes-updated', handleInteracoes)

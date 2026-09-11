@@ -60,6 +60,14 @@ export function LeadDetailsModal({
   const [novaAnotacao, setNovaAnotacao] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
+  const loadTimeline = async (id: string) => {
+    const all = await getInteracoes(id)
+    const filtered = all.sort(
+      (a, b) => new Date(b.dataRegistro).getTime() - new Date(a.dataRegistro).getTime(),
+    )
+    setTimeline(filtered)
+  }
+
   useEffect(() => {
     if (arena) {
       setFormData({
@@ -73,17 +81,9 @@ export function LeadDetailsModal({
         status: arena.status,
         observacoes: arena.observacoes || '',
       })
-      loadTimeline(arena.id)
+      void loadTimeline(arena.id)
     }
   }, [arena])
-
-  const loadTimeline = (id: string) => {
-    const all = getInteracoes()
-    const filtered = all
-      .filter((item) => item.arenaId === id)
-      .sort((a, b) => new Date(b.dataRegistro).getTime() - new Date(a.dataRegistro).getTime())
-    setTimeline(filtered)
-  }
 
   if (!arenaId || !arena) return null
 
@@ -91,7 +91,7 @@ export function LeadDetailsModal({
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSaveChanges = (e?: React.FormEvent) => {
+  const handleSaveChanges = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!formData.nome?.trim()) {
       toast({
@@ -103,7 +103,7 @@ export function LeadDetailsModal({
     }
 
     setIsSaving(true)
-    const updated = updateArena(arena.id, {
+    const updated = await updateArena(arena.id, {
       nome: formData.nome?.trim() || '',
       modalidade: formData.modalidade || 'Beach Tennis',
       whatsApp: cleanPhoneNumber(formData.whatsApp || ''),
@@ -125,7 +125,7 @@ export function LeadDetailsModal({
     }
   }
 
-  const handleAddInteracao = (e: React.FormEvent) => {
+  const handleAddInteracao = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!novaAnotacao.trim()) {
       toast({
@@ -136,12 +136,11 @@ export function LeadDetailsModal({
       return
     }
 
-    const created = addInteracao(arena.id, novoTipo, novaAnotacao.trim())
+    const created = await addInteracao(arena.id, novoTipo, novaAnotacao.trim())
     setNovaAnotacao('')
-    loadTimeline(arena.id)
+    await loadTimeline(arena.id)
 
-    // If type was WhatsApp, refresh arena's ultimoContato
-    const updated = updateArena(arena.id, {
+    const updated = await updateArena(arena.id, {
       ultimoContato: created.dataRegistro,
     })
     if (updated) {
@@ -235,25 +234,26 @@ export function LeadDetailsModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => {
-                  // update status to Contatado and last contact to now
-                  const updated = updateArena(arena.id, {
-                    status: 'Contatado',
-                    ultimoContato: new Date().toISOString(),
-                  })
-                  if (updated) {
-                    setFormData((prev) => ({ ...prev, status: 'Contatado' }))
-                    onArenaUpdated?.(updated)
-                  }
-                  addInteracao(
-                    arena.id,
-                    'WhatsApp',
-                    'Contato iniciado via clique rápido de WhatsApp no CRM.',
-                  )
-                  loadTimeline(arena.id)
-                  toast({
-                    title: 'Contato registrado via WhatsApp!',
-                    description: 'Status atualizado para "Contatado".',
-                  })
+                  void (async () => {
+                    const updated = await updateArena(arena.id, {
+                      status: 'Contatado',
+                      ultimoContato: new Date().toISOString(),
+                    })
+                    if (updated) {
+                      setFormData((prev) => ({ ...prev, status: 'Contatado' }))
+                      onArenaUpdated?.(updated)
+                    }
+                    await addInteracao(
+                      arena.id,
+                      'WhatsApp',
+                      'Contato iniciado via clique rápido de WhatsApp no CRM.',
+                    )
+                    await loadTimeline(arena.id)
+                    toast({
+                      title: 'Contato registrado via WhatsApp!',
+                      description: 'Status atualizado para "Contatado".',
+                    })
+                  })()
                 }}
                 className="px-3.5 py-2 rounded-lg bg-[#25D366] hover:bg-[#20ba5a] text-white font-semibold text-xs transition-colors shrink-0 shadow-sm flex items-center gap-1.5"
               >
