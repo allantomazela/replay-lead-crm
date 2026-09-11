@@ -1,11 +1,12 @@
 import { config } from 'dotenv'
 import { existsSync } from 'fs'
-import { resolve } from 'path'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 
-const cwd = process.cwd()
-const envProd = resolve(cwd, '.env-prod')
-const envDev = resolve(cwd, '.env-dev')
-const envDefault = resolve(cwd, '.env')
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const envProd = resolve(rootDir, '.env-prod')
+const envDev = resolve(rootDir, '.env-dev')
+const envDefault = resolve(rootDir, '.env')
 
 if (existsSync(envProd)) {
   config({ path: envProd, override: true })
@@ -16,5 +17,6 @@ if (existsSync(envProd)) {
   config({ path: envDefault, override: true })
 }
 
+export const projectRoot = rootDir
 export const isProdEnv =
   process.env.NODE_ENV === 'production' || existsSync(envProd)
