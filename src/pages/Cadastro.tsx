@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Video } from 'lucide-react'
 import { authClient } from '@/lib/auth'
+import replaySportsIcon from '@/assets/replay-sports-icon.png'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -54,8 +54,12 @@ export default function Cadastro() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-violet-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#03045e] to-[#EC4899] flex items-center justify-center">
-            <Video className="w-6 h-6 text-white" />
+          <div className="w-14 h-14 rounded-xl overflow-hidden shadow-md bg-black">
+            <img
+              src={replaySportsIcon}
+              alt="Replay Sports"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900">Criar conta</h1>

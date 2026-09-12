@@ -5,7 +5,6 @@ import {
   Kanban,
   BarChart3,
   MessageSquareText,
-  Video,
   Menu,
   X,
   LogOut,
@@ -13,6 +12,7 @@ import {
   Layers,
   CheckCircle2,
 } from 'lucide-react'
+import replaySportsIcon from '@/assets/replay-sports-icon.png'
 import { cn } from '@/lib/utils'
 import { getArenas } from '@/services/storage'
 import { authClient } from '@/lib/auth'
@@ -80,8 +80,12 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-700/80 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#03045e] via-[#1a2278] to-[#EC4899] flex items-center justify-center shadow-md shadow-violet-900/40">
-            <Video className="w-5 h-5 text-white stroke-[2.2]" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-black/40 shrink-0 bg-black">
+            <img
+              src={replaySportsIcon}
+              alt="Replay Sports"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
