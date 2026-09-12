@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authClient } from '@/lib/auth'
-import { BrandLogo } from '@/components/BrandLogo'
+import { BrandMark } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -51,13 +51,18 @@ export default function Cadastro() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-violet-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <BrandLogo size="lg" className="shadow-md" />
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900">Criar conta</h1>
-            <p className="text-sm text-slate-500 mt-1">Comece a prospectar arenas no ReplayLead</p>
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#1a2278_0%,_#03045e_45%,_#020330_100%)] flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl shadow-black/25 p-8 space-y-6 border border-white/40">
+        <div className="space-y-5">
+          <BrandMark
+            layout="vertical"
+            theme="light"
+            size="xl"
+            subtitle="Plataforma comercial Replay Sports"
+          />
+          <div className="text-center space-y-1">
+            <h1 className="text-xl font-bold text-slate-900">Criar conta</h1>
+            <p className="text-sm text-slate-500">Comece a prospectar arenas no ReplayLead</p>
           </div>
         </div>
 

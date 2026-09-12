@@ -12,7 +12,7 @@ import {
   Layers,
   CheckCircle2,
 } from 'lucide-react'
-import { BrandLogo } from '@/components/BrandLogo'
+import { BrandMark } from '@/components/BrandLogo'
 import { cn } from '@/lib/utils'
 import { getArenas } from '@/services/storage'
 import { authClient } from '@/lib/auth'
@@ -78,25 +78,14 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const content = (
     <div className="flex flex-col h-full bg-[#1E293B] text-slate-100 select-none">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-700/80 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BrandLogo size="md" />
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg tracking-tight text-white">ReplayLead</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-600/30 text-violet-300 border border-violet-500/30">
-                CRM
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">Gravação de Jogadas</p>
-          </div>
-        </div>
+      <div className="border-b border-slate-700/80 p-5 flex items-center justify-between gap-3">
+        <BrandMark theme="dark" size="md" className="min-w-0 flex-1" />
 
         {/* Close button on mobile */}
         {mobileOpen && (
           <button
             onClick={onCloseMobile}
-            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors shrink-0"
             aria-label="Fechar menu"
           >
             <X className="w-5 h-5" />
