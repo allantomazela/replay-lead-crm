@@ -407,7 +407,7 @@ export default function Metricas() {
       <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/90 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-violet-100 text-[#7C3AED]">
+            <span className="p-2 rounded-xl bg-violet-100 text-[#03045e]">
               <BarChart3 className="w-5 h-5" />
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
@@ -445,7 +445,7 @@ export default function Metricas() {
 
           <Link
             to="/pipeline"
-            className="text-xs font-semibold px-4 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white transition-all shadow-md shadow-violet-900/20 flex items-center justify-center gap-1.5 active:scale-95 shrink-0"
+            className="text-xs font-semibold px-4 py-2.5 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white transition-all shadow-md shadow-violet-900/20 flex items-center justify-center gap-1.5 active:scale-95 shrink-0"
           >
             <span>Ir para o Pipeline</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -503,7 +503,7 @@ export default function Metricas() {
               <p className="text-xs font-bold uppercase tracking-wider text-violet-700">
                 Taxa de Conversão
               </p>
-              <h3 className="text-3xl font-extrabold text-[#7C3AED] mt-1">{taxaConversao}%</h3>
+              <h3 className="text-3xl font-extrabold text-[#03045e] mt-1">{taxaConversao}%</h3>
             </div>
             <div className="w-11 h-11 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
               <TrendingUp className="w-5 h-5" />

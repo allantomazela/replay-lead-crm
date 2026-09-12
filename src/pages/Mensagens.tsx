@@ -173,7 +173,7 @@ export default function Mensagens() {
       <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-violet-100 text-[#7C3AED]">
+            <span className="p-2 rounded-xl bg-violet-100 text-[#03045e]">
               <FileText className="w-5 h-5" />
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
@@ -282,7 +282,7 @@ export default function Mensagens() {
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
                       isWhatsApp
                         ? 'bg-[#25D366] text-white shadow-emerald-500/20'
-                        : 'bg-[#7C3AED] text-white shadow-violet-500/20'
+                        : 'bg-[#03045e] text-white shadow-violet-500/20'
                     }`}
                   >
                     {isWhatsApp ? (
@@ -331,7 +331,7 @@ export default function Mensagens() {
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(tpl)}
-                    className="px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-[#7C3AED] font-semibold text-xs transition-colors flex items-center gap-1.5 border border-violet-200"
+                    className="px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-[#03045e] font-semibold text-xs transition-colors flex items-center gap-1.5 border border-violet-200"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Editar</span>
@@ -423,7 +423,7 @@ export default function Mensagens() {
               <div className="flex items-center gap-2.5">
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center text-white ${
-                    editingTemplate.tipo === 'WhatsApp' ? 'bg-[#25D366]' : 'bg-[#7C3AED]'
+                    editingTemplate.tipo === 'WhatsApp' ? 'bg-[#25D366]' : 'bg-[#03045e]'
                   }`}
                 >
                   {editingTemplate.tipo === 'WhatsApp' ? (
@@ -463,7 +463,7 @@ export default function Mensagens() {
                   required
                   value={formNome}
                   onChange={(e) => setFormNome(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                   placeholder="Ex: Mensagem de Primeiro Contato"
                 />
               </div>
@@ -477,7 +477,7 @@ export default function Mensagens() {
                     type="text"
                     value={formAssunto}
                     onChange={(e) => setFormAssunto(e.target.value)}
-                    className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                    className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                     placeholder="Ex: Sistema de Gravação de Jogadas para [Nome]"
                   />
                 </div>
@@ -491,7 +491,7 @@ export default function Mensagens() {
                   type="text"
                   value={formDescricao}
                   onChange={(e) => setFormDescricao(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                   placeholder="Ex: Utilizado no botão do Pipeline"
                 />
               </div>
@@ -535,7 +535,7 @@ export default function Mensagens() {
                   required
                   value={formConteudo}
                   onChange={(e) => setFormConteudo(e.target.value)}
-                  className="w-full p-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white font-mono text-xs leading-relaxed"
+                  className="w-full p-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white font-mono text-xs leading-relaxed"
                   placeholder="Escreva sua mensagem aqui utilizando [Nome], [Cidade], [Estado], etc..."
                 />
               </div>
@@ -566,7 +566,7 @@ export default function Mensagens() {
                 </button>
                 <button
                   type="submit"
-                  className="min-h-[44px] px-6 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 active:scale-95 flex items-center gap-2"
+                  className="min-h-[44px] px-6 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 active:scale-95 flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
                   <span>Salvar Alterações</span>

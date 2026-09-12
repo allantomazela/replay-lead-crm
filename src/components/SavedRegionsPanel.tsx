@@ -250,7 +250,7 @@ export function SavedRegionsPanel({
                     type="button"
                     onClick={() => onExecute(regiao)}
                     disabled={isSearching}
-                    className="min-h-[32px] px-3 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 shrink-0"
+                    className="min-h-[32px] px-3 rounded-lg bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 shrink-0"
                     title={`Buscar arenas em ${regiao.cidade} (${regiao.modalidade})`}
                   >
                     <Play className="w-3 h-3 fill-white" />

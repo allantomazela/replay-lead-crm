@@ -252,7 +252,7 @@ export default function Pipeline() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filtrar por arena, cidade ou modalidade..."
-            className="w-full min-h-[44px] pl-10 pr-4 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 bg-white"
+            className="w-full min-h-[44px] pl-10 pr-4 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 bg-white"
           />
         </div>
 
@@ -275,7 +275,7 @@ export default function Pipeline() {
           <button
             type="button"
             onClick={() => setIsQuickAddOpen(true)}
-            className="min-h-[40px] px-4 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center gap-1.5 shrink-0 active:scale-95"
+            className="min-h-[40px] px-4 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center gap-1.5 shrink-0 active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Nova Arena</span>
@@ -380,7 +380,7 @@ export default function Pipeline() {
                             <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600">
                               {arena.modalidade}
                             </span>
-                            <h4 className="font-bold text-sm text-slate-900 group-hover:text-[#7C3AED] transition-colors leading-snug">
+                            <h4 className="font-bold text-sm text-slate-900 group-hover:text-[#03045e] transition-colors leading-snug">
                               {arena.nome}
                             </h4>
                           </div>
@@ -457,7 +457,7 @@ export default function Pipeline() {
                   value={quickNome}
                   onChange={(e) => setQuickNome(e.target.value)}
                   placeholder="Ex: Arena Sunset Beach"
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#7C3AED]"
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#03045e]"
                 />
               </div>
 
@@ -468,7 +468,7 @@ export default function Pipeline() {
                 <select
                   value={quickModalidade}
                   onChange={(e) => setQuickModalidade(e.target.value)}
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#7C3AED] bg-white"
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#03045e] bg-white"
                 >
                   <option value="Beach Tennis">Beach Tennis</option>
                   <option value="Futebol Society">Futebol Society</option>
@@ -486,7 +486,7 @@ export default function Pipeline() {
                   value={quickPhone}
                   onChange={(e) => setQuickPhone(e.target.value)}
                   placeholder="5511999999999"
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#7C3AED]"
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#03045e]"
                 />
               </div>
 
@@ -498,7 +498,7 @@ export default function Pipeline() {
                     value={quickCidade}
                     onChange={(e) => setQuickCidade(e.target.value)}
                     placeholder="São Paulo"
-                    className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#7C3AED]"
+                    className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-[#03045e]"
                   />
                 </div>
                 <div>
@@ -509,7 +509,7 @@ export default function Pipeline() {
                     value={quickEstado}
                     onChange={(e) => setQuickEstado(e.target.value.toUpperCase())}
                     placeholder="SP"
-                    className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 uppercase focus:outline-none focus:border-[#7C3AED]"
+                    className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs text-slate-900 uppercase focus:outline-none focus:border-[#03045e]"
                   />
                 </div>
               </div>
@@ -524,7 +524,7 @@ export default function Pipeline() {
                 </button>
                 <button
                   type="submit"
-                  className="min-h-[40px] px-5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20"
+                  className="min-h-[40px] px-5 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20"
                 >
                   Cadastrar Lead
                 </button>

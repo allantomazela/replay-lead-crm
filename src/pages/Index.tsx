@@ -436,7 +436,7 @@ export default function Index() {
                 value={cidade}
                 onChange={(e) => setCidade(e.target.value)}
                 placeholder="Ex: São Paulo, Campinas, Curitiba"
-                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 bg-white"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 bg-white"
               />
             </div>
 
@@ -448,7 +448,7 @@ export default function Index() {
                 value={estado}
                 onChange={(e) => setEstado(e.target.value.toUpperCase())}
                 placeholder="Ex: SP, RJ, MG"
-                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 uppercase bg-white"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 uppercase bg-white"
               />
             </div>
 
@@ -457,7 +457,7 @@ export default function Index() {
               <select
                 value={modalidade}
                 onChange={(e) => setModalidade(e.target.value)}
-                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 bg-white font-medium"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900 bg-white font-medium"
               >
                 <option value="Todos">Todas as Modalidades</option>
                 <option value="Beach Tennis">Beach Tennis</option>
@@ -472,7 +472,7 @@ export default function Index() {
             <button
               type="submit"
               disabled={isSearching}
-              className="min-h-[44px] px-6 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-70"
+              className="min-h-[44px] px-6 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-70"
             >
               {isSearching ? (
                 <>
@@ -563,7 +563,7 @@ export default function Index() {
                   type="button"
                   onClick={handleSaveSelected}
                   disabled={selectedIds.size === 0}
-                  className="flex-1 sm:flex-none min-h-[40px] px-4 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm flex items-center justify-center gap-1.5"
+                  className="flex-1 sm:flex-none min-h-[40px] px-4 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Salvar Selecionados ({selectedIds.size})</span>
@@ -870,7 +870,7 @@ export default function Index() {
               <button
                 type="button"
                 onClick={handleConfirmCsvImport}
-                className="px-5 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20"
+                className="px-5 py-2.5 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20"
               >
                 Importar {csvPreview.arenas.length} Leads
               </button>

@@ -80,7 +80,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-700/80 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#7C3AED] via-[#8B5CF6] to-[#EC4899] flex items-center justify-center shadow-md shadow-violet-900/40">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#03045e] via-[#1a2278] to-[#EC4899] flex items-center justify-center shadow-md shadow-violet-900/40">
             <Video className="w-5 h-5 text-white stroke-[2.2]" />
           </div>
           <div>
@@ -136,7 +136,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 cn(
                   'group flex items-start gap-3 px-3.5 py-3 rounded-xl transition-all duration-150 relative text-left',
                   active
-                    ? 'bg-[#7C3AED] text-white shadow-lg shadow-violet-900/30 font-semibold'
+                    ? 'bg-[#03045e] text-white shadow-lg shadow-violet-900/30 font-semibold'
                     : 'text-slate-300 hover:bg-slate-800/90 hover:text-white',
                 )
               }

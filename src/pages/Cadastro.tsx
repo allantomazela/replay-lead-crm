@@ -54,7 +54,7 @@ export default function Cadastro() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-violet-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#7C3AED] to-[#EC4899] flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#03045e] to-[#EC4899] flex items-center justify-center">
             <Video className="w-6 h-6 text-white" />
           </div>
           <div>

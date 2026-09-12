@@ -281,7 +281,7 @@ export function LeadDetailsModal({
                   required
                   value={formData.nome || ''}
                   onChange={(e) => handleInputChange('nome', e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                   placeholder="Ex: Arena Beach Tennis Club"
                 />
               </div>
@@ -291,7 +291,7 @@ export function LeadDetailsModal({
                 <select
                   value={formData.modalidade || 'Beach Tennis'}
                   onChange={(e) => handleInputChange('modalidade', e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                 >
                   <option value="Beach Tennis">Beach Tennis</option>
                   <option value="Futebol Society">Futebol Society</option>
@@ -305,7 +305,7 @@ export function LeadDetailsModal({
                 <select
                   value={formData.status || 'A Contatar'}
                   onChange={(e) => handleInputChange('status', e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 font-semibold text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 font-semibold text-slate-900 bg-white"
                 >
                   {STATUS_LIST.map((st) => (
                     <option key={st} value={st}>
@@ -321,7 +321,7 @@ export function LeadDetailsModal({
                   type="text"
                   value={formData.whatsApp || ''}
                   onChange={(e) => handleInputChange('whatsApp', e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                   placeholder="Ex: 5511999999999"
                 />
               </div>
@@ -332,7 +332,7 @@ export function LeadDetailsModal({
                   type="email"
                   value={formData.email || ''}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                   placeholder="contato@arena.com.br"
                 />
               </div>
@@ -343,7 +343,7 @@ export function LeadDetailsModal({
                   type="text"
                   value={formData.endereco || ''}
                   onChange={(e) => handleInputChange('endereco', e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                   placeholder="Rua, número e bairro"
                 />
               </div>
@@ -354,7 +354,7 @@ export function LeadDetailsModal({
                   type="text"
                   value={formData.cidade || ''}
                   onChange={(e) => handleInputChange('cidade', e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white"
                   placeholder="Ex: São Paulo"
                 />
               </div>
@@ -366,7 +366,7 @@ export function LeadDetailsModal({
                   maxLength={2}
                   value={formData.estado || ''}
                   onChange={(e) => handleInputChange('estado', e.target.value.toUpperCase())}
-                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 uppercase bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 uppercase bg-white"
                   placeholder="SP"
                 />
               </div>
@@ -379,7 +379,7 @@ export function LeadDetailsModal({
                   rows={2}
                   value={formData.observacoes || ''}
                   onChange={(e) => handleInputChange('observacoes', e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white text-xs leading-relaxed"
+                  className="w-full p-3 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-slate-900 bg-white text-xs leading-relaxed"
                   placeholder="Detalhes da estrutura, quantidade de quadras, nome do responsável ou interesse em câmeras..."
                 />
               </div>
@@ -407,7 +407,7 @@ export function LeadDetailsModal({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="min-h-[44px] px-6 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                className="min-h-[44px] px-6 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center gap-2 active:scale-95 disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 <span>Salvar Alterações</span>
@@ -440,7 +440,7 @@ export function LeadDetailsModal({
                   <select
                     value={novoTipo}
                     onChange={(e) => setNovoTipo(e.target.value as TipoContato)}
-                    className="w-full min-h-[40px] px-3 rounded-lg border border-slate-300 focus:outline-none focus:border-[#7C3AED] text-xs bg-white font-medium"
+                    className="w-full min-h-[40px] px-3 rounded-lg border border-slate-300 focus:outline-none focus:border-[#03045e] text-xs bg-white font-medium"
                   >
                     <option value="WhatsApp">WhatsApp</option>
                     <option value="Ligação">Ligação</option>
@@ -458,7 +458,7 @@ export function LeadDetailsModal({
                       value={novaAnotacao}
                       onChange={(e) => setNovaAnotacao(e.target.value)}
                       placeholder="Ex: Reunião com gerente agendada para amanhã..."
-                      className="flex-1 min-h-[40px] px-3 rounded-lg border border-slate-300 focus:outline-none focus:border-[#7C3AED] text-xs bg-white"
+                      className="flex-1 min-h-[40px] px-3 rounded-lg border border-slate-300 focus:outline-none focus:border-[#03045e] text-xs bg-white"
                     />
                     <button
                       type="submit"

@@ -99,7 +99,7 @@ export function SaveRegionModal({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex: São Paulo - Beach Tennis"
-              className="w-full min-h-[42px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900"
+              className="w-full min-h-[42px] px-3.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#03045e] focus:ring-2 focus:ring-violet-400/20 text-sm text-slate-900"
             />
             <p className="text-[11px] text-slate-400">
               Você pode renomear a qualquer momento no painel de regiões salvas.
@@ -118,7 +118,7 @@ export function SaveRegionModal({
             <button
               type="submit"
               disabled={!nome.trim()}
-              className="min-h-[38px] px-5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+              className="min-h-[38px] px-5 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md shadow-violet-900/20 flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Salvar Região</span>

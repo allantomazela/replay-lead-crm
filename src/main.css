@@ -25,8 +25,8 @@
   }
 
   :root {
-    /* Primary violet #7C3AED */
-    --primary: 262.1 83.3% 57.8%;
+    /* Primary #03045e */
+    --primary: 239.3 93.8% 19%;
     --primary-foreground: 210 40% 98%;
 
     /* Secondary pink #EC4899 */
@@ -45,7 +45,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 262.1 83.3% 57.8%;
+    --accent: 239.3 93.8% 19%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
@@ -53,18 +53,18 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 262.1 83.3% 57.8%;
+    --ring: 239.3 93.8% 19%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 222.2 47.4% 11.2%; /* #1E293B slate-800 */
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 262.1 83.3% 57.8%;
+    --sidebar-primary: 239.3 93.8% 19%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 217.2 32.6% 17.5%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 262.1 83.3% 57.8%;
+    --sidebar-ring: 239.3 93.8% 19%;
   }
 
   .dark {
