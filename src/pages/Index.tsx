@@ -35,6 +35,8 @@ import { useNavigate } from 'react-router-dom'
 import { SavedRegionsPanel } from '@/components/SavedRegionsPanel'
 import { SaveRegionModal } from '@/components/SaveRegionModal'
 import { RenameRegionModal, DeleteRegionModal } from '@/components/RegionModals'
+import { ContactQualityBadges } from '@/components/ContactQualityBadges'
+import { summarizeContactQuality } from '@/lib/contact-validation'
 
 export default function Index() {
   const { toast } = useToast()
@@ -50,6 +52,7 @@ export default function Index() {
   const [results, setResults] = useState<Arena[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [hasSearched, setHasSearched] = useState(false)
+  const [onlyReadyContact, setOnlyReadyContact] = useState(false)
 
   // CSV Import preview dialog state
   const [csvPreview, setCsvPreview] = useState<CSVParseResult | null>(null)
@@ -184,9 +187,10 @@ export default function Index() {
       } else {
         setLastExecutedRegion(null)
         if (data.length > 0) {
+          const ready = data.filter((d) => d.contactQuality?.readyToContact).length
           toast({
             title: 'Busca concluída!',
-            description: `Encontramos ${data.length} arenas esportivas em ${searchCidade}.`,
+            description: `Encontramos ${data.length} arenas em ${searchCidade} · ${ready} com canal de contato válido.`,
           })
         } else {
           toast({
@@ -313,20 +317,31 @@ export default function Index() {
     if (!csvPreview) return
     setResults(csvPreview.arenas)
     setHasSearched(true)
+    setOnlyReadyContact(false)
     setSelectedIds(new Set(csvPreview.arenas.map((a) => a.id)))
     setIsPreviewOpen(false)
 
+    const ready = csvPreview.arenas.filter((a) => a.contactQuality?.readyToContact).length
     toast({
       title: 'Planilha carregada!',
-      description: `${csvPreview.arenas.length} leads prontos para revisão e salvamento.`,
+      description: `${csvPreview.arenas.length} leads prontos · ${ready} com canal de contato válido.`,
     })
   }
 
+  const contactSummary = summarizeContactQuality(
+    results
+      .map((r) => r.contactQuality)
+      .filter((q): q is NonNullable<typeof q> => Boolean(q)),
+  )
+  const displayedResults = onlyReadyContact
+    ? results.filter((r) => r.contactQuality?.readyToContact)
+    : results
+
   const toggleSelectAll = () => {
-    if (selectedIds.size === results.length) {
+    if (selectedIds.size === displayedResults.length && displayedResults.length > 0) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(results.map((r) => r.id)))
+      setSelectedIds(new Set(displayedResults.map((r) => r.id)))
     }
   }
 
@@ -340,6 +355,13 @@ export default function Index() {
   }
 
   const handleSaveOne = async (arena: Arena) => {
+    if (arena.contactQuality && !arena.contactQuality.readyToContact) {
+      const proceed = window.confirm(
+        `"${arena.nome}" não tem WhatsApp/e-mail válido. Deseja salvar mesmo assim para enriquecer depois?`,
+      )
+      if (!proceed) return
+    }
+
     await addArena({
       nome: arena.nome,
       modalidade: arena.modalidade,
@@ -544,58 +566,90 @@ export default function Index() {
       {hasSearched && (
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden animate-fade-in-up">
           {/* Table Header toolbar */}
-          <div className="p-4 md:px-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50/70">
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-slate-900 text-sm">
-                Resultados Encontrados ({results.length})
-              </h3>
-              {selectedIds.size > 0 && (
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-semibold">
-                  {selectedIds.size} selecionadas
-                </span>
-              )}
+          <div className="p-4 md:px-6 border-b border-slate-100 flex flex-col gap-3 bg-slate-50/70">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Resultados Encontrados ({results.length})
+                </h3>
+                {selectedIds.size > 0 && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-semibold">
+                    {selectedIds.size} selecionadas
+                  </span>
+                )}
+                {onlyReadyContact && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+                    Exibindo {displayedResults.length} com contato válido
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {results.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSaveSelected}
+                    disabled={selectedIds.size === 0}
+                    className="flex-1 sm:flex-none min-h-[40px] px-4 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Salvar Selecionados ({selectedIds.size})</span>
+                  </button>
+                )}
+
+                {results.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => exportArenasToCSV(displayedResults, `prospeccao_${cidade}.csv`)}
+                    className="min-h-[40px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                    title="Exportar CSV dos resultados da busca"
+                  >
+                    <Download className="w-4 h-4 text-slate-500" />
+                    <span className="hidden md:inline">Exportar CSV</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              {/* Bulk Save Button */}
-              {results.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleSaveSelected}
-                  disabled={selectedIds.size === 0}
-                  className="flex-1 sm:flex-none min-h-[40px] px-4 rounded-xl bg-[#03045e] hover:bg-[#020347] text-white font-semibold text-xs uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Salvar Selecionados ({selectedIds.size})</span>
-                </button>
-              )}
-
-              {/* Export CSV of current results */}
-              {results.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => exportArenasToCSV(results, `prospeccao_${cidade}.csv`)}
-                  className="min-h-[40px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
-                  title="Exportar CSV dos resultados da busca"
-                >
-                  <Download className="w-4 h-4 text-slate-500" />
-                  <span className="hidden md:inline">Exportar CSV</span>
-                </button>
-              )}
-            </div>
+            {results.length > 0 && contactSummary.total > 0 && (
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                <p className="text-xs text-slate-600">
+                  <span className="font-semibold text-slate-900">Validação de contato:</span>{' '}
+                  {contactSummary.ready} prontos · {contactSummary.high} altos ·{' '}
+                  {contactSummary.medium} parciais · {contactSummary.low} fracos ·{' '}
+                  {contactSummary.none} sem contato
+                </p>
+                <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={onlyReadyContact}
+                    onChange={(e) => {
+                      setOnlyReadyContact(e.target.checked)
+                      setSelectedIds(new Set())
+                    }}
+                    className="rounded border-slate-300 text-[#03045e] focus:ring-[#03045e]"
+                  />
+                  Mostrar só com telefone, WhatsApp ou e-mail válido
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Table or Empty State */}
-          {results.length === 0 ? (
+          {displayedResults.length === 0 ? (
             <div className="p-12 text-center space-y-3">
               <div className="w-14 h-14 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
                 <Search className="w-7 h-7" />
               </div>
               <p className="text-slate-700 font-semibold text-base">
-                Nenhuma arena encontrada para esses filtros. Tente outra cidade ou estado.
+                {results.length === 0
+                  ? 'Nenhuma arena encontrada para esses filtros. Tente outra cidade ou estado.'
+                  : 'Nenhuma arena com canal de contato válido neste filtro.'}
               </p>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Dica: tente buscar por cidades maiores vizinhas ou importar sua própria base em CSV.
+                {results.length === 0
+                  ? 'Dica: tente buscar por cidades maiores vizinhas ou importar sua própria base em CSV.'
+                  : 'Desative o filtro de contato válido para ver todos os resultados e enriquecer manualmente.'}
               </p>
             </div>
           ) : (
@@ -611,14 +665,15 @@ export default function Index() {
                           onClick={toggleSelectAll}
                           className="text-slate-500 hover:text-slate-800"
                         >
-                          {selectedIds.size === results.length && results.length > 0 ? (
+                          {selectedIds.size === displayedResults.length &&
+                          displayedResults.length > 0 ? (
                             <CheckSquare className="w-4 h-4 text-violet-600" />
                           ) : (
                             <Square className="w-4 h-4" />
                           )}
                         </button>
                       </th>
-                      <th className="py-3.5 px-4">Nome da Arena</th>
+                      <th className="py-3.5 px-4">Nome / Contato</th>
                       <th className="py-3.5 px-4">Modalidade</th>
                       <th className="py-3.5 px-4">Endereço</th>
                       <th className="py-3.5 px-4">Cidade / Estado</th>
@@ -626,7 +681,7 @@ export default function Index() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {results.map((arena, idx) => {
+                    {displayedResults.map((arena, idx) => {
                       const isSelected = selectedIds.has(arena.id)
                       const isSaved = savedIds.has(arena.id)
                       const isNew = newArenaIds.has(arena.id) && !isSaved
@@ -668,11 +723,12 @@ export default function Index() {
                                 </span>
                               )}
                             </div>
-                            {arena.whatsApp && (
-                              <div className="text-[11px] text-slate-400 mt-0.5">
-                                WhatsApp: {arena.whatsApp}
-                              </div>
-                            )}
+                            <ContactQualityBadges
+                              quality={arena.contactQuality}
+                              whatsApp={arena.whatsApp}
+                              email={arena.email}
+                              website={arena.website}
+                            />
                           </td>
                           <td className="py-3 px-4">
                             <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
@@ -716,7 +772,7 @@ export default function Index() {
 
               {/* Mobile Card-like List View */}
               <div className="md:hidden divide-y divide-slate-100">
-                {results.map((arena) => {
+                {displayedResults.map((arena) => {
                   const isSelected = selectedIds.has(arena.id)
                   const isSaved = savedIds.has(arena.id)
                   const isNew = newArenaIds.has(arena.id) && !isSaved
@@ -754,6 +810,13 @@ export default function Index() {
                             <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               {arena.modalidade}
                             </span>
+                            <ContactQualityBadges
+                              quality={arena.contactQuality}
+                              whatsApp={arena.whatsApp}
+                              email={arena.email}
+                              website={arena.website}
+                              compact
+                            />
                           </div>
                         </div>
 
@@ -782,6 +845,9 @@ export default function Index() {
                         </div>
                         {arena.whatsApp && (
                           <p className="text-slate-600 font-medium">WhatsApp: {arena.whatsApp}</p>
+                        )}
+                        {arena.email && (
+                          <p className="text-slate-600 font-medium">E-mail: {arena.email}</p>
                         )}
                       </div>
                     </div>

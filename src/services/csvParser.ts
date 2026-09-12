@@ -1,5 +1,11 @@
 import { Arena } from '../types/crm'
-import { cleanPhoneNumber } from '@/lib/format'
+import {
+  assessContactQuality,
+  normalizeEmail,
+  normalizeWebsite,
+  pickBestEmail,
+  pickBestWhatsApp,
+} from '@/lib/contact-validation'
 
 export interface CSVParseResult {
   arenas: Arena[]
@@ -17,7 +23,6 @@ export function parseArenaCSV(csvContent: string): CSVParseResult {
     return { arenas: [], headers: [], totalRows: 0 }
   }
 
-  // Detect delimiter: comma, semicolon or tab
   const headerLine = lines[0]
   let delimiter = ','
   if (headerLine.includes(';') && !headerLine.includes(',')) {
@@ -56,6 +61,7 @@ export function parseArenaCSV(csvContent: string): CSVParseResult {
   const idxModalidade = findIndex(['Modalidade', 'Esporte', 'Tipo'])
   const idxWhatsApp = findIndex(['WhatsApp', 'Whatsapp', 'Telefone', 'Celular', 'Contato'])
   const idxEmail = findIndex(['Email', 'E-mail', 'Correio'])
+  const idxWebsite = findIndex(['Website', 'Site', 'Url', 'Instagram'])
   const idxEndereco = findIndex(['Endereco', 'Endereço', 'Logradouro', 'Rua'])
   const idxCidade = findIndex(['Cidade', 'Municipio', 'Município'])
   const idxEstado = findIndex(['Estado', 'UF'])
@@ -67,34 +73,39 @@ export function parseArenaCSV(csvContent: string): CSVParseResult {
     if (!rawLine.trim()) continue
 
     const cols = splitCSVLine(rawLine, delimiter).map((c) => c.trim().replace(/^["']|["']$/g, ''))
-
     const getVal = (idx: number) => (idx >= 0 && cols[idx] ? cols[idx].trim() : '')
 
     const nome = getVal(idxNome) || (idxNome === -1 && cols[0] ? cols[0] : '')
-    if (!nome) continue // Ignora linhas sem nome
+    if (!nome) continue
 
-    const modalidade = getVal(idxModalidade) || 'Beach Tennis'
-    const rawPhone = getVal(idxWhatsApp)
-    const email = getVal(idxEmail)
+    const modalidade = getVal(idxModalidade) || 'Outro'
+    const whatsApp = pickBestWhatsApp([getVal(idxWhatsApp)])
+    const email = pickBestEmail([getVal(idxEmail)]) || normalizeEmail(getVal(idxEmail))
+    const website = normalizeWebsite(getVal(idxWebsite)) || undefined
     const endereco = getVal(idxEndereco)
     const cidade = getVal(idxCidade)
     const estado = getVal(idxEstado)
+    const contactQuality = assessContactQuality({ whatsApp, email, website, endereco })
 
     arenas.push({
       id: `csv-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
       nome,
-      modalidade: modalidade || 'Beach Tennis',
-      whatsApp: cleanPhoneNumber(rawPhone),
-      email: email || '',
+      modalidade: modalidade || 'Outro',
+      whatsApp,
+      email,
+      website,
       endereco: endereco || '',
       cidade: cidade || '',
       estado: estado ? estado.toUpperCase().slice(0, 2) : '',
       status: 'A Contatar',
       ultimoContato: null,
-      observacoes: 'Importado via planilha CSV.',
+      observacoes: `Importado via planilha CSV. Qualidade: ${contactQuality.level} (${contactQuality.score}/100).`,
+      contactQuality,
       createdAt: new Date().toISOString(),
     })
   }
+
+  arenas.sort((a, b) => (b.contactQuality?.score || 0) - (a.contactQuality?.score || 0))
 
   return {
     arenas,

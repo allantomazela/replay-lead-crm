@@ -1,5 +1,10 @@
 import { Arena } from '../types/crm'
-import { cleanPhoneNumber } from '@/lib/format'
+import {
+  assessContactQuality,
+  normalizeWebsite,
+  pickBestEmail,
+  pickBestWhatsApp,
+} from '@/lib/contact-validation'
 
 export interface OverpassElement {
   type: string
@@ -21,22 +26,20 @@ function mapModalidade(tags: Record<string, string> = {}): string {
   const description = (tags.description || '').toLowerCase()
   const allText = `${sport} ${leisure} ${name} ${description}`
 
-  // Beach tennis and sand sports take precedence
   if (
     allText.includes('beach tennis') ||
     allText.includes('beachtennis') ||
     allText.includes('beach_tennis') ||
-    allText.includes('beach') ||
-    allText.includes('areia') ||
     allText.includes('futevolei') ||
     allText.includes('futevôlei') ||
     allText.includes('footvolley') ||
-    sport.includes('beach_volleyball')
+    sport.includes('beach_volleyball') ||
+    (allText.includes('beach') && allText.includes('tennis')) ||
+    (allText.includes('areia') && (allText.includes('tennis') || allText.includes('tenis')))
   ) {
     return 'Beach Tennis'
   }
 
-  // Soccer / society sports
   if (
     allText.includes('society') ||
     allText.includes('futebol') ||
@@ -48,7 +51,6 @@ function mapModalidade(tags: Record<string, string> = {}): string {
     return 'Futebol Society'
   }
 
-  // Volleyball
   if (
     allText.includes('volei') ||
     allText.includes('vôlei') ||
@@ -58,7 +60,6 @@ function mapModalidade(tags: Record<string, string> = {}): string {
     return 'Vôlei'
   }
 
-  // General racket/tennis sports mapped to Beach Tennis for this CRM
   if (
     sport.includes('tennis') ||
     allText.includes('tenis') ||
@@ -68,7 +69,7 @@ function mapModalidade(tags: Record<string, string> = {}): string {
     return 'Beach Tennis'
   }
 
-  return 'Beach Tennis'
+  return 'Outro'
 }
 
 function buildAddress(tags: Record<string, string> = {}): string {
@@ -104,7 +105,6 @@ function resolveArenaName(tags: Record<string, string>, type: string, id: number
     return candidate.trim()
   }
 
-  // Descriptive fallback if OSM tag has no explicit name
   const sport = tags.sport ? tags.sport.replace(/_/g, ' ') : ''
   const leisure = tags.leisure ? tags.leisure.replace(/_/g, ' ') : ''
   const street = tags['addr:street'] || ''
@@ -118,10 +118,74 @@ function resolveArenaName(tags: Record<string, string>, type: string, id: number
   if (sport) {
     return `Centro Esportivo (${sport})`
   }
-  if (leisure === 'sports_centre') {
+  if (leisure === 'sports_centre' || leisure === 'stadium') {
     return `Centro Esportivo (#${id})`
   }
   return `Arena sem nome (OSM ${type} #${id})`
+}
+
+function extractWebsite(tags: Record<string, string>): string {
+  return normalizeWebsite(
+    tags['contact:website'] || tags.website || tags.url || tags['contact:facebook'] || '',
+  )
+}
+
+function buildObservacoes(params: {
+  type: string
+  id: number
+  website?: string
+  instagram?: string
+  qualityLabel: string
+  issues: string[]
+}): string {
+  const lines = [
+    `Capturado via OpenStreetMap (${params.type} #${params.id}).`,
+    `Qualidade de contato: ${params.qualityLabel}.`,
+  ]
+  if (params.website) lines.push(`Website: ${params.website}`)
+  if (params.instagram) lines.push(`Instagram: ${params.instagram}`)
+  if (params.issues.length > 0) {
+    lines.push(`Alertas: ${params.issues.join('; ')}`)
+  }
+  return lines.join(' ')
+}
+
+function buildOverpassQuery(bbox: [number, number, number, number] | null, city: string): string {
+  const blocks = `
+        node["leisure"="sports_centre"](__AREA__);
+        way["leisure"="sports_centre"](__AREA__);
+        relation["leisure"="sports_centre"](__AREA__);
+        node["leisure"="stadium"](__AREA__);
+        way["leisure"="stadium"](__AREA__);
+        node["leisure"="pitch"](__AREA__);
+        way["leisure"="pitch"](__AREA__);
+        node["club"="sport"](__AREA__);
+        way["club"="sport"](__AREA__);
+        node["leisure"="fitness_centre"](__AREA__);
+        way["leisure"="fitness_centre"](__AREA__);
+  `
+
+  if (bbox) {
+    const [s, w, n, e] = bbox
+    const area = `${s},${w},${n},${e}`
+    return `
+      [out:json][timeout:35];
+      (
+        ${blocks.replaceAll('__AREA__', area)}
+      );
+      out center tags 200;
+    `
+  }
+
+  const safeCity = city.replace(/["\\]/g, '')
+  return `
+    [out:json][timeout:35];
+    area["name"="${safeCity}"]["boundary"="administrative"]->.searchArea;
+    (
+      ${blocks.replaceAll('__AREA__', 'area.searchArea')}
+    );
+    out center tags 200;
+  `
 }
 
 export async function searchOverpassArenas({
@@ -140,14 +204,12 @@ export async function searchOverpassArenas({
     throw new Error('Informe a cidade para realizar a busca no mapa.')
   }
 
-  // Endpoints públicos da Overpass API com fallbacks confiáveis
   const endpoints = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   ]
 
-  // 1. Nominatim Geocoding para obter o bounding box exato da cidade no Brasil
   let bbox: [number, number, number, number] | null = null
   let resolvedCityName = trimmedCity
   let resolvedStateCode = trimmedState.toUpperCase()
@@ -169,7 +231,6 @@ export async function searchOverpassArenas({
     if (geoRes.ok) {
       const geoData = await geoRes.json()
       if (Array.isArray(geoData) && geoData.length > 0) {
-        // Encontra o resultado que seja cidade/município ou o primeiro
         const place =
           geoData.find(
             (p) =>
@@ -180,19 +241,17 @@ export async function searchOverpassArenas({
               p.type === 'municipality',
           ) || geoData[0]
 
-        if (place && place.boundingbox && place.boundingbox.length === 4) {
-          // Nominatim boundingbox format: [south_lat, north_lat, west_lon, east_lon]
+        if (place?.boundingbox?.length === 4) {
           const south = parseFloat(place.boundingbox[0])
           const north = parseFloat(place.boundingbox[1])
           const west = parseFloat(place.boundingbox[2])
           const east = parseFloat(place.boundingbox[3])
           if (!isNaN(south) && !isNaN(north) && !isNaN(west) && !isNaN(east)) {
-            // Overpass bbox convention: (south, west, north, east)
             bbox = [south, west, north, east]
           }
         }
 
-        if (place && place.address) {
+        if (place?.address) {
           if (place.address.city || place.address.town || place.address.municipality) {
             resolvedCityName =
               place.address.city || place.address.town || place.address.municipality
@@ -204,7 +263,6 @@ export async function searchOverpassArenas({
           }
         }
       } else {
-        // Nominatim retornou lista vazia
         throw new Error(
           `Cidade "${trimmedCity}${trimmedState ? ` - ${trimmedState}` : ''}" não foi encontrada no mapa. Verifique a ortografia ou a sigla do estado.`,
         )
@@ -217,52 +275,15 @@ export async function searchOverpassArenas({
     console.warn('Nominatim geocode falhou, tentando fallback com busca por área no Overpass:', err)
   }
 
-  // 2. Construir consulta Overpass QL
-  // Busca leisure=sports_centre (centros esportivos) e leisure=pitch (quadras esportivas)
-  // além de club=sport e leisure=stadium para máxima fidelidade real.
-  let overpassQuery = ''
-  if (bbox) {
-    const [s, w, n, e] = bbox
-    overpassQuery = `
-      [out:json][timeout:30];
-      (
-        node["leisure"="sports_centre"](${s},${w},${n},${e});
-        way["leisure"="sports_centre"](${s},${w},${n},${e});
-        relation["leisure"="sports_centre"](${s},${w},${n},${e});
-        node["leisure"="pitch"](${s},${w},${n},${e});
-        way["leisure"="pitch"](${s},${w},${n},${e});
-        node["club"="sport"](${s},${w},${n},${e});
-        way["club"="sport"](${s},${w},${n},${e});
-      );
-      out center tags 120;
-    `
-  } else {
-    // Fallback: busca por área administrativa no Overpass
-    const safeCity = trimmedCity.replace(/["\\]/g, '')
-    overpassQuery = `
-      [out:json][timeout:30];
-      area["name"="${safeCity}"]["boundary"="administrative"]->.searchArea;
-      (
-        node["leisure"="sports_centre"](area.searchArea);
-        way["leisure"="sports_centre"](area.searchArea);
-        relation["leisure"="sports_centre"](area.searchArea);
-        node["leisure"="pitch"](area.searchArea);
-        way["leisure"="pitch"](area.searchArea);
-        node["club"="sport"](area.searchArea);
-        way["club"="sport"](area.searchArea);
-      );
-      out center tags 120;
-    `
-  }
+  const overpassQuery = buildOverpassQuery(bbox, trimmedCity)
 
   let lastError: unknown = null
   let data: OverpassResponse | null = null
 
-  // Tenta os endpoints em sequência
   for (const endpoint of endpoints) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 20000)
+      const timeoutId = setTimeout(() => controller.abort(), 25000)
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -303,57 +324,66 @@ export async function searchOverpassArenas({
 
   for (const el of data.elements) {
     const tags = el.tags || {}
-
-    // Resolve o nome real ou gera um descritivo fiel
     const nome = resolveArenaName(tags, el.type, el.id)
-
-    // Deduplicação inteligente: ignora duplicatas com mesmo nome na mesma cidade
     const dedupeKey = `${nome.toLowerCase()}__${(tags['addr:street'] || '').toLowerCase()}`
     if (seenKeys.has(dedupeKey)) continue
     seenKeys.add(dedupeKey)
 
-    const detectedModalidade = mapModalidade(tags)
+    const whatsApp = pickBestWhatsApp([
+      tags['contact:whatsapp'],
+      tags.whatsapp,
+      tags['contact:mobile'],
+      tags.mobile,
+      tags['phone:mobile'],
+      tags['contact:phone'],
+      tags.phone,
+    ])
 
-    // Extração fiel de contatos e telefones
-    const rawPhone =
-      tags['contact:whatsapp'] ||
-      tags.whatsapp ||
-      tags['contact:phone'] ||
-      tags.phone ||
-      tags['contact:mobile'] ||
-      tags.mobile ||
-      tags['phone:mobile'] ||
-      ''
-
-    const email = tags['contact:email'] || tags.email || ''
+    const email = pickBestEmail([tags['contact:email'], tags.email])
+    const website = extractWebsite(tags)
+    const instagram = tags['contact:instagram'] || tags.instagram || ''
 
     const endereco =
       buildAddress(tags) ||
       (tags.description ? tags.description.slice(0, 80) : 'Endereço não informado via OSM')
 
-    const city = tags['addr:city'] || resolvedCityName
-    const uf = tags['addr:state'] || resolvedStateCode || 'BR'
+    const contactQuality = assessContactQuality({
+      whatsApp,
+      email,
+      website,
+      endereco,
+    })
 
     results.push({
       id: `osm-${el.type}-${el.id}`,
+      osmId: `${el.type}/${el.id}`,
       nome,
-      modalidade: detectedModalidade,
-      whatsApp: cleanPhoneNumber(rawPhone),
+      modalidade: mapModalidade(tags),
+      whatsApp,
       email,
+      website: website || undefined,
       endereco,
-      cidade: city,
-      estado: uf,
+      cidade: tags['addr:city'] || resolvedCityName,
+      estado: tags['addr:state'] || resolvedStateCode || 'BR',
       status: 'A Contatar',
       ultimoContato: null,
-      observacoes: `Capturado via OpenStreetMap (${el.type} #${el.id}) com dados reais da comunidade OSM.`,
+      observacoes: buildObservacoes({
+        type: el.type,
+        id: el.id,
+        website,
+        instagram,
+        qualityLabel: `${contactQuality.level} (${contactQuality.score}/100)`,
+        issues: contactQuality.issues,
+      }),
+      contactQuality,
       createdAt: new Date().toISOString(),
     })
   }
 
-  // Filtrar por modalidade selecionada pelo usuário se diferente de 'Todos'
+  results.sort((a, b) => (b.contactQuality?.score || 0) - (a.contactQuality?.score || 0))
+
   if (modalidade && modalidade !== 'Todos') {
-    const filtered = results.filter((r) => r.modalidade === modalidade)
-    return filtered
+    return results.filter((r) => r.modalidade === modalidade)
   }
 
   return results

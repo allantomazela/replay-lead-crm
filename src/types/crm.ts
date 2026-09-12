@@ -1,3 +1,5 @@
+import type { ContactQuality } from '@/lib/contact-validation'
+
 export type StatusLead =
   | 'A Contatar'
   | 'Contatado'
@@ -31,6 +33,10 @@ export interface Arena {
   observacoes?: string
   isSample?: boolean
   createdAt: string
+  /** Campos de prospecção (não obrigatórios no banco). */
+  website?: string
+  osmId?: string
+  contactQuality?: ContactQuality
 }
 
 export interface RegiaoSalva {
