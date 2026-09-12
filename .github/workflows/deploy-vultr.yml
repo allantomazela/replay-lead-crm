@@ -1,53 +1,27 @@
-name: Deploy Vultr
+name: Deploy Automatico ReplayLead
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
-concurrency:
-  group: deploy-vultr
-  cancel-in-progress: false
-
 jobs:
-  verify:
-    name: Build
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: 1. Baixando código do GitHub
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-  deploy:
-    name: Deploy to Vultr
-    needs: verify
-    if: ${{ vars.ENABLE_VULTR_DEPLOY == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run deploy script on Vultr
+      - name: 2. Conectando e Atualizando Servidor
         uses: appleboy/ssh-action@v1.2.2
         with:
-          host: ${{ secrets.VULTR_HOST }}
-          username: ${{ secrets.VULTR_USER }}
-          key: ${{ secrets.VULTR_SSH_PRIVATE_KEY }}
-          port: ${{ vars.VULTR_SSH_PORT || 22 }}
-          script_stop: true
-          command_timeout: 15m
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
-            set -euo pipefail
+            echo "Iniciando atualizacao do ReplayLead..."
             cd /var/www/replay-lead-crm
             bash ./atualizar-replaylead.sh
+            echo "Deploy concluido."
