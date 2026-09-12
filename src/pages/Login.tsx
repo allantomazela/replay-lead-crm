@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authClient } from '@/lib/auth'
-import replaySportsIcon from '@/assets/replay-sports-icon.png'
+import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,13 +49,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-violet-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-14 h-14 rounded-xl overflow-hidden shadow-md bg-black">
-            <img
-              src={replaySportsIcon}
-              alt="Replay Sports"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <BrandLogo size="lg" className="shadow-md" />
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900">Entrar no ReplayLead</h1>
             <p className="text-sm text-slate-500 mt-1">Acesse sua conta para continuar no CRM</p>

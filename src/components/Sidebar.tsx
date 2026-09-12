@@ -12,7 +12,7 @@ import {
   Layers,
   CheckCircle2,
 } from 'lucide-react'
-import replaySportsIcon from '@/assets/replay-sports-icon.png'
+import { BrandLogo } from '@/components/BrandLogo'
 import { cn } from '@/lib/utils'
 import { getArenas } from '@/services/storage'
 import { authClient } from '@/lib/auth'
@@ -80,13 +80,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-700/80 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-black/40 shrink-0 bg-black">
-            <img
-              src={replaySportsIcon}
-              alt="Replay Sports"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <BrandLogo size="md" />
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-lg tracking-tight text-white">ReplayLead</span>
