@@ -67,3 +67,36 @@ export const userPreferences = pgTable('user_preferences', {
   dismissedAlerts: jsonb('dismissed_alerts').$type<Record<string, string>>().notNull().default({}),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const instaladores = pgTable('instaladores', {
+  id: text('id').primaryKey(),
+  userId: uuid('user_id').notNull(),
+  nome: text('nome').notNull(),
+  tipo: text('tipo').notNull(),
+  whatsapp: text('whatsapp').notNull().default(''),
+  email: text('email').notNull().default(''),
+  endereco: text('endereco').notNull().default(''),
+  cidade: text('cidade').notNull().default(''),
+  estado: text('estado').notNull().default(''),
+  regioesAtendimento: jsonb('regioes_atendimento').$type<string[]>().notNull().default([]),
+  observacoes: text('observacoes'),
+  status: text('status').notNull().default('A Contatar'),
+  origem: text('origem').notNull().default('manual'),
+  isSample: boolean('is_sample').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const regioesParceiros = pgTable('regioes_parceiros', {
+  id: text('id').primaryKey(),
+  userId: uuid('user_id').notNull(),
+  nome: text('nome').notNull(),
+  cidade: text('cidade').notNull(),
+  estado: text('estado').notNull(),
+  tipo: text('tipo').notNull().default('Todos'),
+  criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+  ultimaExecucaoEm: timestamp('ultima_execucao_em', { withTimezone: true }),
+  totalEncontradas: integer('total_encontradas').notNull().default(0),
+  novasUltimaBusca: integer('novas_ultima_busca').notNull().default(0),
+  idsAnteriores: jsonb('ids_anteriores').$type<string[]>().notNull().default([]),
+})

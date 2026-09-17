@@ -5,12 +5,13 @@ import {
   Kanban,
   BarChart3,
   MessageSquareText,
-  Menu,
   X,
   LogOut,
   Sparkles,
   Layers,
   CheckCircle2,
+  Wrench,
+  Users,
 } from 'lucide-react'
 import { BrandMark } from '@/components/BrandLogo'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,18 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       label: 'Mensagens',
       icon: MessageSquareText,
       subtitle: 'Modelos de WhatsApp e E-mail',
+    },
+    {
+      to: '/parceiros',
+      label: 'Parceiros — Prospecção',
+      icon: Wrench,
+      subtitle: 'CFTV, eletricista e segurança',
+    },
+    {
+      to: '/parceiros/cadastro',
+      label: 'Parceiros — Cadastro',
+      icon: Users,
+      subtitle: 'Lista e cidades de atendimento',
     },
   ]
 

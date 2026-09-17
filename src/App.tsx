@@ -7,6 +7,8 @@ import Index from './pages/Index'
 import Pipeline from './pages/Pipeline'
 import Metricas from './pages/Metricas'
 import Mensagens from './pages/Mensagens'
+import ProspeccaoParceiros from './pages/ProspeccaoParceiros'
+import CadastroParceiros from './pages/CadastroParceiros'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import NotFound from './pages/NotFound'
@@ -30,6 +32,8 @@ const App = () => (
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/metricas" element={<Metricas />} />
             <Route path="/mensagens" element={<Mensagens />} />
+            <Route path="/parceiros" element={<ProspeccaoParceiros />} />
+            <Route path="/parceiros/cadastro" element={<CadastroParceiros />} />
           </Route>
         </Route>
 

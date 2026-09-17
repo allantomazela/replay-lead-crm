@@ -5,7 +5,9 @@ import { db } from './db'
 import {
   arenas,
   interacoes,
+  instaladores,
   messageTemplates,
+  regioesParceiros,
   regioesSalvas,
   userPreferences,
 } from './schema'
@@ -545,4 +547,251 @@ app.put('/api/preferences', async (c) => {
     followUpDays: row.followupDays,
     dismissedAlerts: row.dismissedAlerts || {},
   })
+})
+
+function mapInstalador(row: typeof instaladores.$inferSelect) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    tipo: row.tipo,
+    whatsApp: row.whatsapp,
+    email: row.email,
+    endereco: row.endereco,
+    cidade: row.cidade,
+    estado: row.estado,
+    regioesAtendimento: row.regioesAtendimento || [],
+    observacoes: row.observacoes || undefined,
+    status: row.status,
+    origem: row.origem,
+    isSample: row.isSample,
+    createdAt: toIso(row.createdAt) || new Date().toISOString(),
+  }
+}
+
+function mapRegiaoParceiro(row: typeof regioesParceiros.$inferSelect) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    cidade: row.cidade,
+    estado: row.estado,
+    tipo: row.tipo,
+    criadoEm: toIso(row.criadoEm) || new Date().toISOString(),
+    ultimaExecucaoEm: toIso(row.ultimaExecucaoEm),
+    totalEncontradas: row.totalEncontradas,
+    novasUltimaBusca: row.novasUltimaBusca,
+    idsAnteriores: row.idsAnteriores || [],
+  }
+}
+
+// ---- Instaladores / Parceiros ----
+app.get('/api/instaladores', async (c) => {
+  const userId = c.get('userId')
+  const cidade = c.req.query('cidade')
+  const estado = c.req.query('estado')
+  const tipo = c.req.query('tipo')
+  const q = (c.req.query('q') || '').trim().toLowerCase()
+
+  let rows = await db
+    .select()
+    .from(instaladores)
+    .where(eq(instaladores.userId, userId))
+    .orderBy(desc(instaladores.createdAt))
+
+  if (cidade) {
+    const cidadeLower = cidade.toLowerCase()
+    rows = rows.filter((r) => r.cidade.toLowerCase().includes(cidadeLower))
+  }
+  if (estado) {
+    const uf = estado.toUpperCase()
+    rows = rows.filter((r) => r.estado.toUpperCase() === uf)
+  }
+  if (tipo && tipo !== 'Todos') {
+    rows = rows.filter((r) => r.tipo === tipo)
+  }
+  if (q) {
+    rows = rows.filter(
+      (r) =>
+        r.nome.toLowerCase().includes(q) ||
+        r.cidade.toLowerCase().includes(q) ||
+        (r.regioesAtendimento || []).some((cdd) => cdd.toLowerCase().includes(q)),
+    )
+  }
+
+  return c.json(rows.map(mapInstalador))
+})
+
+app.post('/api/instaladores', async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json()
+  const id = body.id || newId('instalador')
+  const now = new Date()
+  const [row] = await db
+    .insert(instaladores)
+    .values({
+      id,
+      userId,
+      nome: body.nome,
+      tipo: body.tipo || 'Instalador de Câmeras / CFTV',
+      whatsapp: body.whatsApp || body.whatsapp || '',
+      email: body.email || '',
+      endereco: body.endereco || '',
+      cidade: body.cidade || '',
+      estado: body.estado || '',
+      regioesAtendimento: Array.isArray(body.regioesAtendimento)
+        ? body.regioesAtendimento
+        : body.cidade
+          ? [body.cidade]
+          : [],
+      observacoes: body.observacoes || null,
+      status: body.status || 'A Contatar',
+      origem: body.origem || 'manual',
+      isSample: Boolean(body.isSample),
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+  return c.json(mapInstalador(row), 201)
+})
+
+app.post('/api/instaladores/bulk', async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json()
+  const items = Array.isArray(body.items) ? body.items : []
+  const now = new Date()
+  if (items.length === 0) return c.json([])
+
+  const values = items.map((item: Record<string, unknown>, index: number) => ({
+    id: (item.id as string) || newId(`instalador-${index}`),
+    userId,
+    nome: String(item.nome || ''),
+    tipo: String(item.tipo || 'Instalador de Câmeras / CFTV'),
+    whatsapp: String(item.whatsApp || item.whatsapp || ''),
+    email: String(item.email || ''),
+    endereco: String(item.endereco || ''),
+    cidade: String(item.cidade || ''),
+    estado: String(item.estado || ''),
+    regioesAtendimento: Array.isArray(item.regioesAtendimento)
+      ? (item.regioesAtendimento as string[])
+      : item.cidade
+        ? [String(item.cidade)]
+        : [],
+    observacoes: item.observacoes ? String(item.observacoes) : null,
+    status: String(item.status || 'A Contatar'),
+    origem: String(item.origem || 'osm'),
+    isSample: Boolean(item.isSample),
+    createdAt: now,
+    updatedAt: now,
+  }))
+
+  const rows = await db.insert(instaladores).values(values).returning()
+  return c.json(rows.map(mapInstalador), 201)
+})
+
+app.patch('/api/instaladores/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  const updates: Partial<typeof instaladores.$inferInsert> = { updatedAt: new Date() }
+
+  if (body.nome !== undefined) updates.nome = body.nome
+  if (body.tipo !== undefined) updates.tipo = body.tipo
+  if (body.whatsApp !== undefined || body.whatsapp !== undefined) {
+    updates.whatsapp = body.whatsApp ?? body.whatsapp
+  }
+  if (body.email !== undefined) updates.email = body.email
+  if (body.endereco !== undefined) updates.endereco = body.endereco
+  if (body.cidade !== undefined) updates.cidade = body.cidade
+  if (body.estado !== undefined) updates.estado = body.estado
+  if (body.regioesAtendimento !== undefined) updates.regioesAtendimento = body.regioesAtendimento
+  if (body.observacoes !== undefined) updates.observacoes = body.observacoes
+  if (body.status !== undefined) updates.status = body.status
+  if (body.origem !== undefined) updates.origem = body.origem
+
+  const rows = await db
+    .update(instaladores)
+    .set(updates)
+    .where(and(eq(instaladores.id, id), eq(instaladores.userId, userId)))
+    .returning()
+  if (!rows[0]) return c.json({ error: 'Parceiro não encontrado' }, 404)
+  return c.json(mapInstalador(rows[0]))
+})
+
+app.delete('/api/instaladores/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  const rows = await db
+    .delete(instaladores)
+    .where(and(eq(instaladores.id, id), eq(instaladores.userId, userId)))
+    .returning()
+  if (!rows[0]) return c.json({ error: 'Parceiro não encontrado' }, 404)
+  return c.json({ ok: true })
+})
+
+app.get('/api/regioes-parceiros', async (c) => {
+  const userId = c.get('userId')
+  const rows = await db
+    .select()
+    .from(regioesParceiros)
+    .where(eq(regioesParceiros.userId, userId))
+    .orderBy(desc(regioesParceiros.criadoEm))
+  return c.json(rows.map(mapRegiaoParceiro))
+})
+
+app.post('/api/regioes-parceiros', async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.json()
+  const id = body.id || newId('regiao-parceiro')
+  const [row] = await db
+    .insert(regioesParceiros)
+    .values({
+      id,
+      userId,
+      nome: body.nome,
+      cidade: body.cidade,
+      estado: body.estado,
+      tipo: body.tipo || 'Todos',
+      criadoEm: new Date(),
+      ultimaExecucaoEm: body.ultimaExecucaoEm ? new Date(body.ultimaExecucaoEm) : null,
+      totalEncontradas: body.totalEncontradas ?? 0,
+      novasUltimaBusca: body.novasUltimaBusca ?? 0,
+      idsAnteriores: body.idsAnteriores || [],
+    })
+    .returning()
+  return c.json(mapRegiaoParceiro(row), 201)
+})
+
+app.patch('/api/regioes-parceiros/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  const updates: Partial<typeof regioesParceiros.$inferInsert> = {}
+  if (body.nome !== undefined) updates.nome = body.nome
+  if (body.cidade !== undefined) updates.cidade = body.cidade
+  if (body.estado !== undefined) updates.estado = body.estado
+  if (body.tipo !== undefined) updates.tipo = body.tipo
+  if (body.ultimaExecucaoEm !== undefined) {
+    updates.ultimaExecucaoEm = body.ultimaExecucaoEm ? new Date(body.ultimaExecucaoEm) : null
+  }
+  if (body.totalEncontradas !== undefined) updates.totalEncontradas = body.totalEncontradas
+  if (body.novasUltimaBusca !== undefined) updates.novasUltimaBusca = body.novasUltimaBusca
+  if (body.idsAnteriores !== undefined) updates.idsAnteriores = body.idsAnteriores
+
+  const rows = await db
+    .update(regioesParceiros)
+    .set(updates)
+    .where(and(eq(regioesParceiros.id, id), eq(regioesParceiros.userId, userId)))
+    .returning()
+  if (!rows[0]) return c.json({ error: 'Região não encontrada' }, 404)
+  return c.json(mapRegiaoParceiro(rows[0]))
+})
+
+app.delete('/api/regioes-parceiros/:id', async (c) => {
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  const rows = await db
+    .delete(regioesParceiros)
+    .where(and(eq(regioesParceiros.id, id), eq(regioesParceiros.userId, userId)))
+    .returning()
+  if (!rows[0]) return c.json({ error: 'Região não encontrada' }, 404)
+  return c.json({ ok: true })
 })
