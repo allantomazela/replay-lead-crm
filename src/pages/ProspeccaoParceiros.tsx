@@ -38,7 +38,7 @@ export default function ProspeccaoParceiros() {
   const [estado, setEstado] = useState('SP')
   const [tipo, setTipo] = useState('Todos')
   const [fonte, setFonte] = useState<FonteBusca>('geoapify')
-  const [onlyWithPhone, setOnlyWithPhone] = useState(true)
+  const [onlyWithPhone, setOnlyWithPhone] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [results, setResults] = useState<ParceiroInstalador[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -138,9 +138,13 @@ export default function ProspeccaoParceiros() {
         await loadRegioes()
       }
 
+      const phoneHint =
+        searchFonte === 'geoapify' && data.length > 0 && withPhone === 0
+          ? ' Nenhum telefone no Geoapify para esta cidade — use endereço/site ou tente outra cidade.'
+          : ''
       toast({
         title: searchFonte === 'geoapify' ? 'Busca Geoapify concluída' : 'Busca no mapa concluída',
-        description: `${data.length} profissionais · ${withPhone} com telefone para contato.`,
+        description: `${data.length} profissionais · ${withPhone} com telefone para contato.${phoneHint}`,
       })
     } catch (err) {
       toast({
@@ -324,7 +328,7 @@ export default function ProspeccaoParceiros() {
               onChange={(e) => setOnlyWithPhone(e.target.checked)}
               className="rounded border-slate-300"
             />
-            Só listar profissionais com telefone (recomendado para contato)
+            Só listar quem tem telefone (em SP muitos não têm no Geoapify — deixe desmarcado)
           </label>
         )}
 

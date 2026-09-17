@@ -88,18 +88,38 @@ const NOISE_NAME =
 function cleanPhone(phone?: string | null): string {
   if (!phone) return ''
   const digits = phone.replace(/\D/g, '')
+  if (!digits) return ''
+  // BR local (10/11) → prefixa 55; já internacional (12/13 com 55) mantém
   if (digits.length === 10 || digits.length === 11) return `55${digits}`
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) return digits
   return digits
 }
 
-function isNoisePlace(nome: string, categories: string[]): boolean {
-  if (NOISE_NAME.test(nome)) return true
-  // Eletrônicos varejo sem indício de serviço técnico
-  const isElectronicsShop = categories.some((c) => c.includes('commercial.elektronics'))
-  if (isElectronicsShop && !CFTV_NAME_HINT.test(nome) && !/eletric|alarme|cftv|seguran/i.test(nome)) {
-    return true
+function isNoisePlace(nome: string, _categories: string[]): boolean {
+  // Só remove grandes redes de varejo óbvias — não descarta eletrônicos/serviços locais
+  return NOISE_NAME.test(nome)
+}
+
+function phoneFromRaw(raw?: Record<string, unknown> | null): string {
+  if (!raw) return ''
+  const keys = [
+    'phone',
+    'contact:phone',
+    'contact:mobile',
+    'mobile',
+    'phone_1',
+    'telephone',
+    'whatsapp',
+    'contact:whatsapp',
+  ]
+  for (const key of keys) {
+    const value = raw[key]
+    if (typeof value === 'string' && value.trim()) {
+      const cleaned = cleanPhone(value)
+      if (cleaned) return cleaned
+    }
   }
-  return false
+  return ''
 }
 
 function getApiKey(): string {
@@ -159,38 +179,65 @@ async function geocodeCity(
   return place
 }
 
+function buildPlacesFilter(geo: GeocodeResult): { filter: string; bias?: string } {
+  if (geo.place_id) {
+    return { filter: `place:${geo.place_id}` }
+  }
+  if (geo.bbox) {
+    const { lon1, lat1, lon2, lat2 } = geo.bbox
+    return { filter: `rect:${lon1},${lat1},${lon2},${lat2}` }
+  }
+  if (geo.lon != null && geo.lat != null) {
+    return {
+      filter: `circle:${geo.lon},${geo.lat},15000`,
+      bias: `proximity:${geo.lon},${geo.lat}`,
+    }
+  }
+  throw new Error('Não foi possível delimitar a área da cidade no Geoapify.')
+}
+
 async function searchPlacesByCategory(
   apiKey: string,
   categories: string[],
   geo: GeocodeResult,
   limit: number,
 ): Promise<PlacesFeature[]> {
-  const url = new URL('https://api.geoapify.com/v2/places')
-  url.searchParams.set('categories', categories.join(','))
-  url.searchParams.set('limit', String(limit))
-  url.searchParams.set('lang', 'pt')
-  url.searchParams.set('apiKey', apiKey)
+  const { filter, bias } = buildPlacesFilter(geo)
+  // Busca por categoria separada: o Places limita o total por request e misturar
+  // várias categorias favorece varejo e esconde profissionais.
+  const perCategory = Math.max(10, Math.ceil(limit / Math.max(categories.length, 1)))
+  const batches = await Promise.all(
+    categories.map(async (category) => {
+      const url = new URL('https://api.geoapify.com/v2/places')
+      url.searchParams.set('categories', category)
+      url.searchParams.set('filter', filter)
+      if (bias) url.searchParams.set('bias', bias)
+      url.searchParams.set('limit', String(perCategory))
+      url.searchParams.set('lang', 'pt')
+      url.searchParams.set('apiKey', apiKey)
 
-  if (geo.place_id) {
-    url.searchParams.set('filter', `place:${geo.place_id}`)
-  } else if (geo.bbox) {
-    const { lon1, lat1, lon2, lat2 } = geo.bbox
-    url.searchParams.set('filter', `rect:${lon1},${lat1},${lon2},${lat2}`)
-  } else if (geo.lon != null && geo.lat != null) {
-    url.searchParams.set('filter', `circle:${geo.lon},${geo.lat},12000`)
-    url.searchParams.set('bias', `proximity:${geo.lon},${geo.lat}`)
-  }
+      const res = await fetch(url)
+      const data = (await res.json()) as {
+        features?: PlacesFeature[]
+        message?: string
+        error?: string
+      }
+      if (!res.ok) {
+        throw new Error(data.message || data.error || `Geoapify Places HTTP ${res.status}`)
+      }
+      return data.features || []
+    }),
+  )
 
-  const res = await fetch(url)
-  const data = (await res.json()) as {
-    features?: PlacesFeature[]
-    message?: string
-    error?: string
+  const seen = new Set<string>()
+  const merged: PlacesFeature[] = []
+  for (const feature of batches.flat()) {
+    const id = feature.properties?.place_id || feature.properties?.name
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    merged.push(feature)
   }
-  if (!res.ok) {
-    throw new Error(data.message || data.error || `Geoapify Places HTTP ${res.status}`)
-  }
-  return data.features || []
+  return merged
 }
 
 async function fetchPlaceDetails(
@@ -259,7 +306,8 @@ export async function searchGeoapifyParceiros(params: {
   if (!cidade) throw new Error('Informe a cidade para buscar no Geoapify.')
 
   const tipo = (params.tipo || 'Todos') as TipoParceiroBusca
-  const onlyWithPhone = params.onlyWithPhone !== false
+  // Só filtra telefone quando o cliente pede explicitamente (padrão: mostrar todos)
+  const onlyWithPhone = params.onlyWithPhone === true
   const geo = await geocodeCity(apiKey, cidade, estado)
 
   const tipos: Array<Exclude<TipoParceiroBusca, 'Todos'>> =
@@ -298,13 +346,11 @@ export async function searchGeoapifyParceiros(params: {
       const details = await fetchPlaceDetails(apiKey, placeId)
       const dprops = details?.properties
       if (dprops) {
-        phone = phone || extractPhone(dprops.contact)
+        phone = phone || extractPhone(dprops.contact) || phoneFromRaw(dprops.datasource?.raw)
         email = email || dprops.contact?.email || ''
         website = website || dprops.website || ''
       }
     }
-
-    if (onlyWithPhone && !phone) return null
 
     const mappedTipo = detectTipo(nome, cats, tipo === 'Todos' ? 'Todos' : tipo)
 
@@ -329,23 +375,47 @@ export async function searchGeoapifyParceiros(params: {
   })
 
   const seen = new Set<string>()
-  const results: ParceiroGeoapifyResult[] = []
+  const allResults: ParceiroGeoapifyResult[] = []
   for (const item of enriched) {
     if (!item) continue
     const key = item.nome.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    results.push(item)
+    allResults.push(item)
   }
 
-  results.sort((a, b) => {
+  allResults.sort((a, b) => {
     if (Boolean(a.whatsApp) === Boolean(b.whatsApp)) return a.nome.localeCompare(b.nome, 'pt-BR')
     return a.whatsApp ? -1 : 1
+  })
+
+  const withPhoneCount = allResults.filter((r) => Boolean(r.whatsApp)).length
+  let results = allResults
+  if (onlyWithPhone) {
+    results = allResults.filter((r) => Boolean(r.whatsApp))
+    // Soft fallback: se o filtro esvaziar a lista, devolve todos e avisa via queries
+    if (results.length === 0 && allResults.length > 0) {
+      results = allResults
+      queries.push(
+        `aviso: nenhum telefone disponível no Geoapify para esta busca; exibindo ${allResults.length} profissionais sem telefone`,
+      )
+    }
+  }
+
+  console.info('[geoapify-parceiros]', {
+    cidade,
+    estado,
+    tipo,
+    onlyWithPhone,
+    features: features.length,
+    afterEnrich: allResults.length,
+    withPhone: withPhoneCount,
+    returned: results.length,
   })
 
   return {
     results,
     queries,
-    withPhone: results.filter((r) => Boolean(r.whatsApp)).length,
+    withPhone: withPhoneCount,
   }
 }
