@@ -102,3 +102,19 @@ export async function deleteRegiaoParceiro(id: string): Promise<void> {
   await apiFetch(`/api/regioes-parceiros/${id}`, { method: 'DELETE' })
   emitRegioesParceiros(await getRegioesParceiros())
 }
+
+export async function searchParceirosGoogle(params: {
+  cidade: string
+  estado: string
+  tipo?: string
+  onlyWithPhone?: boolean
+}): Promise<{
+  results: ParceiroInstalador[]
+  queries: string[]
+  withPhone: number
+}> {
+  return apiFetch('/api/parceiros/google-search', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}

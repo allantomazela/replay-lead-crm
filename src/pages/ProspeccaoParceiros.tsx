@@ -9,7 +9,8 @@ import {
   RefreshCw,
   CheckSquare,
   Square,
-  Wrench,
+  Phone,
+  Map,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ParceiroInstalador, RegiaoParceiroSalva, TIPOS_PARCEIRO } from '@/types/parceiros'
@@ -21,9 +22,13 @@ import {
   deleteRegiaoParceiro,
   getParceiros,
   getRegioesParceiros,
+  searchParceirosGoogle,
   updateRegiaoParceiro,
 } from '@/services/parceirosStorage'
 import { useToast } from '@/hooks/use-toast'
+import { formatPhoneNumber } from '@/lib/format'
+
+type FonteBusca = 'google' | 'osm'
 
 export default function ProspeccaoParceiros() {
   const { toast } = useToast()
@@ -32,6 +37,8 @@ export default function ProspeccaoParceiros() {
   const [cidade, setCidade] = useState('São Paulo')
   const [estado, setEstado] = useState('SP')
   const [tipo, setTipo] = useState('Todos')
+  const [fonte, setFonte] = useState<FonteBusca>('google')
+  const [onlyWithPhone, setOnlyWithPhone] = useState(true)
   const [isSearching, setIsSearching] = useState(false)
   const [results, setResults] = useState<ParceiroInstalador[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -40,6 +47,7 @@ export default function ProspeccaoParceiros() {
   const [newIds, setNewIds] = useState<Set<string>>(new Set())
   const [regioes, setRegioes] = useState<RegiaoParceiroSalva[]>([])
   const [saveName, setSaveName] = useState('')
+  const [lastWithPhone, setLastWithPhone] = useState(0)
 
   const loadRegioes = useCallback(async () => {
     setRegioes(await getRegioesParceiros())
@@ -64,12 +72,13 @@ export default function ProspeccaoParceiros() {
     searchCidade: string,
     searchEstado: string,
     searchTipo: string,
+    searchFonte: FonteBusca = fonte,
     regiao?: RegiaoParceiroSalva,
   ) {
     if (!searchCidade.trim()) {
       toast({
         title: 'Cidade não informada',
-        description: 'Digite a cidade para buscar parceiros no mapa.',
+        description: 'Digite a cidade para localizar profissionais.',
         variant: 'destructive',
       })
       return
@@ -79,14 +88,32 @@ export default function ProspeccaoParceiros() {
     setHasSearched(true)
     setSelectedIds(new Set())
     setNewIds(new Set())
+    setLastWithPhone(0)
 
     try {
-      const data = await searchOverpassParceiros({
-        cidade: searchCidade.trim(),
-        estado: searchEstado.trim(),
-        tipo: searchTipo === 'Todos' ? undefined : searchTipo,
-      })
+      let data: ParceiroInstalador[] = []
+      let withPhone = 0
+
+      if (searchFonte === 'google') {
+        const payload = await searchParceirosGoogle({
+          cidade: searchCidade.trim(),
+          estado: searchEstado.trim(),
+          tipo: searchTipo === 'Todos' ? 'Todos' : searchTipo,
+          onlyWithPhone,
+        })
+        data = payload.results
+        withPhone = payload.withPhone
+      } else {
+        data = await searchOverpassParceiros({
+          cidade: searchCidade.trim(),
+          estado: searchEstado.trim(),
+          tipo: searchTipo === 'Todos' ? undefined : searchTipo,
+        })
+        withPhone = data.filter((p) => Boolean(p.whatsApp)).length
+      }
+
       setResults(data)
+      setLastWithPhone(withPhone)
 
       const stored = await getParceiros()
       const storedNames = new Set(stored.map((p) => p.nome.toLowerCase().trim()))
@@ -112,13 +139,13 @@ export default function ProspeccaoParceiros() {
       }
 
       toast({
-        title: 'Busca concluída',
-        description: `${data.length} parceiros encontrados${detectedNew.size ? ` (${detectedNew.size} novos)` : ''}.`,
+        title: searchFonte === 'google' ? 'Busca Google concluída' : 'Busca no mapa concluída',
+        description: `${data.length} profissionais · ${withPhone} com telefone para contato.`,
       })
     } catch (err) {
       toast({
-        title: 'Erro ao consultar mapa',
-        description: err instanceof Error ? err.message : 'Falha na API de mapas.',
+        title: 'Erro na busca',
+        description: err instanceof Error ? err.message : 'Falha ao localizar profissionais.',
         variant: 'destructive',
       })
     } finally {
@@ -136,14 +163,14 @@ export default function ProspeccaoParceiros() {
       toSave.map((p) => ({
         ...p,
         status: 'A Contatar',
-        origem: 'osm',
+        origem: p.origem || (fonte === 'google' ? 'google' : 'osm'),
         regioesAtendimento: p.regioesAtendimento?.length ? p.regioesAtendimento : [p.cidade],
       })),
     )
     setSavedIds((prev) => new Set([...prev, ...toSave.map((p) => p.id)]))
     toast({
       title: 'Parceiros salvos',
-      description: `${toSave.length} adicionados ao cadastro.`,
+      description: `${toSave.length} adicionados ao cadastro para contato.`,
     })
   }
 
@@ -151,7 +178,7 @@ export default function ProspeccaoParceiros() {
     await addParceiro({
       ...parceiro,
       status: 'A Contatar',
-      origem: 'osm',
+      origem: parceiro.origem || (fonte === 'google' ? 'google' : 'osm'),
       regioesAtendimento: parceiro.regioesAtendimento?.length
         ? parceiro.regioesAtendimento
         : [parceiro.cidade],
@@ -177,32 +204,64 @@ export default function ProspeccaoParceiros() {
     toast({ title: 'Região salva', description: `"${nome}" pronta para reexecutar.` })
   }
 
+  function whatsAppHref(phone: string) {
+    const digits = phone.replace(/\D/g, '')
+    if (!digits) return null
+    return `https://wa.me/${digits}`
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 rounded-2xl p-6 md:p-8 text-white shadow-xl">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-xs font-semibold text-emerald-200 mb-2">
-          <Wrench className="w-3.5 h-3.5" />
+          <Phone className="w-3.5 h-3.5" />
           Parceiros Instaladores
         </div>
         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-          Prospecção de CFTV, Eletricistas e Segurança
+          Localize profissionais com telefone para parceria
         </h2>
         <p className="text-sm text-slate-300 mt-2 max-w-2xl">
-          Busque profissionais no OpenStreetMap por cidade e salve no cadastro de parceiros.
+          Busque CFTV, eletricistas e segurança pelo Google Places (com telefone) ou pelo mapa OSM, e
+          salve no cadastro para entrar em contato.
         </p>
       </div>
 
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-          <Filter className="w-4 h-4 text-emerald-600" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Filtros de captura
-          </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              Filtros de captura
+            </h3>
+          </div>
+          <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50">
+            <button
+              type="button"
+              onClick={() => setFonte('google')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
+                fonte === 'google' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
+              }`}
+            >
+              <Phone className="w-3.5 h-3.5" />
+              Google (telefones)
+            </button>
+            <button
+              type="button"
+              onClick={() => setFonte('osm')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
+                fonte === 'osm' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
+              }`}
+            >
+              <Map className="w-3.5 h-3.5" />
+              OpenStreetMap
+            </button>
+          </div>
         </div>
+
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            void executeSearch(cidade, estado, tipo)
+            void executeSearch(cidade, estado, tipo, fonte)
           }}
           className="grid grid-cols-1 md:grid-cols-4 gap-3"
         >
@@ -245,11 +304,29 @@ export default function ProspeccaoParceiros() {
               disabled={isSearching}
               className="w-full min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Buscar no mapa
+              {isSearching ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : fonte === 'google' ? (
+                <Phone className="w-4 h-4" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
+              {fonte === 'google' ? 'Buscar no Google' : 'Buscar no mapa'}
             </button>
           </div>
         </form>
+
+        {fonte === 'google' && (
+          <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={onlyWithPhone}
+              onChange={(e) => setOnlyWithPhone(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Só listar profissionais com telefone (recomendado para contato)
+          </label>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end pt-2 border-t border-slate-100">
           <div className="flex-1 space-y-1">
@@ -287,7 +364,7 @@ export default function ProspeccaoParceiros() {
                       setCidade(r.cidade)
                       setEstado(r.estado)
                       setTipo(r.tipo)
-                      void executeSearch(r.cidade, r.estado, r.tipo, r)
+                      void executeSearch(r.cidade, r.estado, r.tipo, fonte, r)
                     }}
                     className="font-semibold text-slate-700 hover:text-emerald-700 flex items-center gap-1"
                   >
@@ -315,7 +392,7 @@ export default function ProspeccaoParceiros() {
             <div>
               <h3 className="font-bold text-slate-900">{results.length} resultados</h3>
               <p className="text-xs text-slate-500">
-                {selectedIds.size} selecionados · {newIds.size} novos
+                {selectedIds.size} selecionados · {newIds.size} novos · {lastWithPhone} com telefone
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -363,67 +440,96 @@ export default function ProspeccaoParceiros() {
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">Tipo</th>
                   <th className="px-4 py-3">Cidade</th>
-                  <th className="px-4 py-3">WhatsApp</th>
+                  <th className="px-4 py-3">Telefone / WhatsApp</th>
                   <th className="px-4 py-3">Ação</th>
                 </tr>
               </thead>
               <tbody>
-                {results.map((p) => (
-                  <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(p.id)}
-                        onChange={() => {
-                          setSelectedIds((prev) => {
-                            const next = new Set(prev)
-                            if (next.has(p.id)) next.delete(p.id)
-                            else next.add(p.id)
-                            return next
-                          })
-                        }}
-                      />
-                    </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {p.nome}
-                      {newIds.has(p.id) && (
-                        <span className="ml-2 text-[10px] font-bold uppercase text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                          Novo
-                        </span>
-                      )}
-                      {savedIds.has(p.id) && (
-                        <span className="ml-2 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                          Salvo
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{p.tipo}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {p.cidade}/{p.estado}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{p.whatsApp || '—'}</td>
-                    <td className="px-4 py-3">
-                      {savedIds.has(p.id) ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 text-xs font-semibold">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          No CRM
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => void handleSaveOne(p)}
-                          className="text-emerald-700 hover:underline text-xs font-semibold"
-                        >
-                          Salvar
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {results.map((p) => {
+                  const wa = whatsAppHref(p.whatsApp)
+                  return (
+                    <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/80">
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(p.id)}
+                          onChange={() => {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(p.id)) next.delete(p.id)
+                              else next.add(p.id)
+                              return next
+                            })
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        {p.nome}
+                        {p.origem === 'google' && (
+                          <span className="ml-2 text-[10px] font-bold uppercase text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                            Google
+                          </span>
+                        )}
+                        {newIds.has(p.id) && (
+                          <span className="ml-2 text-[10px] font-bold uppercase text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                            Novo
+                          </span>
+                        )}
+                        {savedIds.has(p.id) && (
+                          <span className="ml-2 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                            Salvo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{p.tipo}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {p.cidade}/{p.estado}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {p.whatsApp ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium text-slate-800">
+                              {formatPhoneNumber(p.whatsApp)}
+                            </span>
+                            {wa && (
+                              <a
+                                href={wa}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs font-semibold text-emerald-700 hover:underline"
+                              >
+                                Abrir WhatsApp
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {savedIds.has(p.id) ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 text-xs font-semibold">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            No CRM
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveOne(p)}
+                            className="text-emerald-700 hover:underline text-xs font-semibold"
+                          >
+                            Salvar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
                 {results.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                      Nenhum parceiro encontrado nesta região.
+                      Nenhum profissional encontrado. Tente outra cidade ou desmarque o filtro de
+                      telefone.
                     </td>
                   </tr>
                 )}

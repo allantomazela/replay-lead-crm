@@ -18,7 +18,7 @@ export interface ParceiroInstalador {
   regioesAtendimento: string[]
   observacoes?: string
   status: StatusParceiro | string
-  origem: 'manual' | 'osm' | string
+  origem: 'manual' | 'osm' | 'google' | string
   isSample?: boolean
   createdAt: string
 }

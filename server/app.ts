@@ -795,3 +795,25 @@ app.delete('/api/regioes-parceiros/:id', async (c) => {
   if (!rows[0]) return c.json({ error: 'Região não encontrada' }, 404)
   return c.json({ ok: true })
 })
+
+app.post('/api/parceiros/google-search', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const cidade = String(body.cidade || '').trim()
+  const estado = String(body.estado || '').trim()
+  const tipo = String(body.tipo || 'Todos')
+  const onlyWithPhone = body.onlyWithPhone !== false
+
+  if (!cidade) {
+    return c.json({ error: 'Informe a cidade para buscar no Google.' }, 400)
+  }
+
+  try {
+    const { searchGoogleParceiros } = await import('./googlePlacesParceiros')
+    const payload = await searchGoogleParceiros({ cidade, estado, tipo, onlyWithPhone })
+    return c.json(payload)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Falha na busca Google Places'
+    const status = message.includes('não configurada') ? 503 : 502
+    return c.json({ error: message }, status)
+  }
+})
