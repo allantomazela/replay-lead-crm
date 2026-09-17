@@ -796,6 +796,29 @@ app.delete('/api/regioes-parceiros/:id', async (c) => {
   return c.json({ ok: true })
 })
 
+app.post('/api/parceiros/places-search', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const cidade = String(body.cidade || '').trim()
+  const estado = String(body.estado || '').trim()
+  const tipo = String(body.tipo || 'Todos')
+  const onlyWithPhone = body.onlyWithPhone !== false
+
+  if (!cidade) {
+    return c.json({ error: 'Informe a cidade para buscar parceiros.' }, 400)
+  }
+
+  try {
+    const { searchGeoapifyParceiros } = await import('./geoapifyParceiros')
+    const payload = await searchGeoapifyParceiros({ cidade, estado, tipo, onlyWithPhone })
+    return c.json(payload)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Falha na busca Geoapify'
+    const status = message.includes('não configurada') ? 503 : 502
+    return c.json({ error: message }, status)
+  }
+})
+
+/** Compatibilidade com clientes antigos que ainda chamam google-search */
 app.post('/api/parceiros/google-search', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const cidade = String(body.cidade || '').trim()
@@ -804,15 +827,15 @@ app.post('/api/parceiros/google-search', async (c) => {
   const onlyWithPhone = body.onlyWithPhone !== false
 
   if (!cidade) {
-    return c.json({ error: 'Informe a cidade para buscar no Google.' }, 400)
+    return c.json({ error: 'Informe a cidade para buscar parceiros.' }, 400)
   }
 
   try {
-    const { searchGoogleParceiros } = await import('./googlePlacesParceiros')
-    const payload = await searchGoogleParceiros({ cidade, estado, tipo, onlyWithPhone })
+    const { searchGeoapifyParceiros } = await import('./geoapifyParceiros')
+    const payload = await searchGeoapifyParceiros({ cidade, estado, tipo, onlyWithPhone })
     return c.json(payload)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Falha na busca Google Places'
+    const message = err instanceof Error ? err.message : 'Falha na busca Geoapify'
     const status = message.includes('não configurada') ? 503 : 502
     return c.json({ error: message }, status)
   }

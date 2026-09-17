@@ -103,6 +103,23 @@ export async function deleteRegiaoParceiro(id: string): Promise<void> {
   emitRegioesParceiros(await getRegioesParceiros())
 }
 
+export async function searchParceirosPlaces(params: {
+  cidade: string
+  estado: string
+  tipo?: string
+  onlyWithPhone?: boolean
+}): Promise<{
+  results: ParceiroInstalador[]
+  queries: string[]
+  withPhone: number
+}> {
+  return apiFetch('/api/parceiros/places-search', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
+/** @deprecated Use searchParceirosPlaces (Geoapify) */
 export async function searchParceirosGoogle(params: {
   cidade: string
   estado: string
@@ -113,8 +130,5 @@ export async function searchParceirosGoogle(params: {
   queries: string[]
   withPhone: number
 }> {
-  return apiFetch('/api/parceiros/google-search', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  })
+  return searchParceirosPlaces(params)
 }
