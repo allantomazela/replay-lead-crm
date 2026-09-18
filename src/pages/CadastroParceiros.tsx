@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Plus, Search, Trash2, Pencil, MapPin, X, Save, Users } from 'lucide-react'
+import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
 import {
   ParceiroInstalador,
   STATUS_PARCEIRO_LIST,
@@ -160,14 +161,17 @@ export default function CadastroParceiros() {
             Cadastre parceiros e informe as cidades que cada um atende. Sem funil por enquanto.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm inline-flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Novo parceiro
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <ModuleSwitchLinks current="parceiros" tone="onLight" />
+          <button
+            type="button"
+            onClick={openCreate}
+            className="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm inline-flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Novo parceiro
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row gap-3">

@@ -27,6 +27,7 @@ import {
 } from '@/services/parceirosStorage'
 import { useToast } from '@/hooks/use-toast'
 import { formatPhoneNumber } from '@/lib/format'
+import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
 
 type FonteBusca = 'geoapify' | 'osm'
 
@@ -217,17 +218,22 @@ export default function ProspeccaoParceiros() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 rounded-2xl p-6 md:p-8 text-white shadow-xl">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-xs font-semibold text-emerald-200 mb-2">
-          <Phone className="w-3.5 h-3.5" />
-          Parceiros Instaladores
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-xs font-semibold text-emerald-200 mb-2">
+              <Phone className="w-3.5 h-3.5" />
+              Parceiros Instaladores
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              Localize profissionais com telefone para parceria
+            </h2>
+            <p className="text-sm text-slate-300 mt-2 max-w-2xl">
+              Busque CFTV, eletricistas e segurança pelo Geoapify (com telefone) ou pelo mapa OSM, e
+              salve no cadastro para entrar em contato.
+            </p>
+          </div>
+          <ModuleSwitchLinks current="parceiros" className="shrink-0 self-start" />
         </div>
-        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-          Localize profissionais com telefone para parceria
-        </h2>
-        <p className="text-sm text-slate-300 mt-2 max-w-2xl">
-          Busque CFTV, eletricistas e segurança pelo Geoapify (com telefone) ou pelo mapa OSM, e
-          salve no cadastro para entrar em contato.
-        </p>
       </div>
 
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">

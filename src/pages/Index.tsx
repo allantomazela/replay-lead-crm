@@ -36,6 +36,7 @@ import { SavedRegionsPanel } from '@/components/SavedRegionsPanel'
 import { SaveRegionModal } from '@/components/SaveRegionModal'
 import { RenameRegionModal, DeleteRegionModal } from '@/components/RegionModals'
 import { ContactQualityBadges } from '@/components/ContactQualityBadges'
+import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
 import { summarizeContactQuality } from '@/lib/contact-validation'
 
 export default function Index() {
@@ -422,18 +423,21 @@ export default function Index() {
       {/* Intro hero banner */}
       <div className="bg-gradient-to-r from-violet-900 via-indigo-900 to-slate-900 rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-violet-600/20 to-transparent pointer-events-none" />
-        <div className="relative z-10 max-w-2xl space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/30 border border-violet-400/30 text-xs font-semibold text-violet-200">
-            <Sparkles className="w-3.5 h-3.5 text-pink-300" />
-            <span>Prospecção Inteligente de Quadras & Arenas</span>
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="max-w-2xl space-y-2 min-w-0">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/30 border border-violet-400/30 text-xs font-semibold text-violet-200">
+              <Sparkles className="w-3.5 h-3.5 text-pink-300" />
+              <span>Prospecção Inteligente de Quadras & Arenas</span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              Descubra Arenas Esportivas para Gravação de Jogadas
+            </h2>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Busque centros esportivos de Beach Tennis, Society e Vôlei de Areia em qualquer cidade
+              do Brasil pelo mapa ou carregue sua lista via planilha CSV.
+            </p>
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-            Descubra Arenas Esportivas para Gravação de Jogadas
-          </h2>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Busque centros esportivos de Beach Tennis, Society e Vôlei de Areia em qualquer cidade
-            do Brasil pelo mapa ou carregue sua lista via planilha CSV.
-          </p>
+          <ModuleSwitchLinks current="arenas" className="shrink-0 self-start" />
         </div>
       </div>
 
