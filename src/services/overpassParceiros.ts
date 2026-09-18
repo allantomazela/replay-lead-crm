@@ -1,21 +1,6 @@
 import { ParceiroInstalador, TipoParceiro } from '@/types/parceiros'
 import { cleanPhoneNumber } from '@/lib/format'
-
-interface OverpassElement {
-  type: string
-  id: number
-  tags?: Record<string, string>
-}
-
-interface OverpassResponse {
-  elements: OverpassElement[]
-}
-
-const ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-]
+import { fetchOverpassJson, type OverpassElement } from './overpassClient'
 
 const NAME_REGEX =
   'cftv|cctv|c[aâ]mera|camera|alarme|eletric|el[eé]tric|seguran[cç]a|monitoramento|vigil[aâ]ncia|circuito fechado|chaveiro'
@@ -201,55 +186,57 @@ async function geocodeCity(
   return { bbox, city: resolvedCity, uf: resolvedUf }
 }
 
-function buildSelectors(areaOrBbox: string): string {
-  return `
+function buildSelectors(areaOrBbox: string, mode: 'light' | 'full'): string {
+  const core = `
       node["craft"="electrician"]${areaOrBbox};
       way["craft"="electrician"]${areaOrBbox};
-      relation["craft"="electrician"]${areaOrBbox};
       node["shop"="security"]${areaOrBbox};
       way["shop"="security"]${areaOrBbox};
-      relation["shop"="security"]${areaOrBbox};
       node["office"="security"]${areaOrBbox};
       way["office"="security"]${areaOrBbox};
-      relation["office"="security"]${areaOrBbox};
       node["craft"="electronics"]${areaOrBbox};
       way["craft"="electronics"]${areaOrBbox};
       node["craft"="locksmith"]${areaOrBbox};
       way["craft"="locksmith"]${areaOrBbox};
-      node["shop"="electronics"]${areaOrBbox};
-      way["shop"="electronics"]${areaOrBbox};
       node["shop"="electrical"]${areaOrBbox};
       way["shop"="electrical"]${areaOrBbox};
+  `
+  if (mode === 'light') return core
+  return `
+      ${core}
+      node["shop"="electronics"]${areaOrBbox};
+      way["shop"="electronics"]${areaOrBbox};
       node["name"~"${NAME_REGEX}",i]${areaOrBbox};
       way["name"~"${NAME_REGEX}",i]${areaOrBbox};
-      node["description"~"${NAME_REGEX}",i]${areaOrBbox};
-      way["description"~"${NAME_REGEX}",i]${areaOrBbox};
-      node["brand"~"${NAME_REGEX}",i]${areaOrBbox};
-      way["brand"~"${NAME_REGEX}",i]${areaOrBbox};
   `
 }
 
-function buildQuery(bbox: [number, number, number, number] | null, cidade: string): string {
+function buildQuery(
+  bbox: [number, number, number, number] | null,
+  cidade: string,
+  mode: 'light' | 'full' = 'light',
+): string {
+  const limit = mode === 'full' ? 160 : 100
   if (bbox) {
     const [s, w, n, e] = bbox
     const area = `(${s},${w},${n},${e})`
     return `
-      [out:json][timeout:45];
+      [out:json][timeout:50];
       (
-        ${buildSelectors(area)}
+        ${buildSelectors(area, mode)}
       );
-      out center tags 200;
+      out center tags ${limit};
     `
   }
 
   const safeCity = cidade.replace(/["\\]/g, '')
   return `
-    [out:json][timeout:45];
+    [out:json][timeout:50];
     area["name"="${safeCity}"]["boundary"="administrative"]->.searchArea;
     (
-      ${buildSelectors('(area.searchArea)')}
+      ${buildSelectors('(area.searchArea)', mode)}
     );
-    out center tags 200;
+    out center tags ${limit};
   `
 }
 
@@ -285,34 +272,21 @@ export async function searchOverpassParceiros({
     geo = { bbox: null, city: trimmedCity, uf: trimmedState.toUpperCase() || 'BR' }
   }
 
-  const overpassQuery = buildQuery(geo.bbox, trimmedCity)
-  let lastError: unknown = null
-  let data: OverpassResponse | null = null
-
-  for (const endpoint of ENDPOINTS) {
+  const overpassQuery = buildQuery(geo.bbox, trimmedCity, 'light')
+  let data = await fetchOverpassJson(overpassQuery)
+  if ((data.elements?.length || 0) < 5) {
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 35000)
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-        body: `data=${encodeURIComponent(overpassQuery)}`,
-        signal: controller.signal,
-      })
-      clearTimeout(timeoutId)
-      if (!res.ok) throw new Error(`Status HTTP ${res.status}`)
-      data = await res.json()
-      if (data && Array.isArray(data.elements)) break
+      const fuller = await fetchOverpassJson(buildQuery(geo.bbox, trimmedCity, 'full'))
+      if ((fuller.elements?.length || 0) > (data.elements?.length || 0)) {
+        data = fuller
+      }
     } catch (err) {
-      lastError = err
+      console.warn('Consulta Overpass ampliada de parceiros falhou; mantendo resultado leve:', err)
     }
   }
 
   if (!data?.elements) {
-    throw (
-      lastError ||
-      new Error('Não foi possível obter dados do OpenStreetMap. Tente novamente.')
-    )
+    throw new Error('Não foi possível obter dados do OpenStreetMap. Tente novamente.')
   }
 
   const results: ParceiroInstalador[] = []

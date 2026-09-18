@@ -5,19 +5,7 @@ import {
   pickBestEmail,
   pickBestWhatsApp,
 } from '@/lib/contact-validation'
-
-export interface OverpassElement {
-  type: string
-  id: number
-  lat?: number
-  lon?: number
-  center?: { lat: number; lon: number }
-  tags?: Record<string, string>
-}
-
-export interface OverpassResponse {
-  elements: OverpassElement[]
-}
+import { fetchOverpassJson, type OverpassElement } from './overpassClient'
 
 function mapModalidade(tags: Record<string, string> = {}): string {
   const sport = (tags.sport || '').toLowerCase()
@@ -150,41 +138,49 @@ function buildObservacoes(params: {
   return lines.join(' ')
 }
 
-function buildOverpassQuery(bbox: [number, number, number, number] | null, city: string): string {
-  const blocks = `
+function buildOverpassQuery(
+  bbox: [number, number, number, number] | null,
+  city: string,
+  mode: 'light' | 'full' = 'light',
+): string {
+  const lightBlocks = `
         node["leisure"="sports_centre"](__AREA__);
         way["leisure"="sports_centre"](__AREA__);
         relation["leisure"="sports_centre"](__AREA__);
         node["leisure"="stadium"](__AREA__);
         way["leisure"="stadium"](__AREA__);
-        node["leisure"="pitch"](__AREA__);
-        way["leisure"="pitch"](__AREA__);
         node["club"="sport"](__AREA__);
         way["club"="sport"](__AREA__);
+  `
+  const fullExtra = `
+        node["leisure"="pitch"](__AREA__);
+        way["leisure"="pitch"](__AREA__);
         node["leisure"="fitness_centre"](__AREA__);
         way["leisure"="fitness_centre"](__AREA__);
   `
+  const blocks = mode === 'full' ? `${lightBlocks}${fullExtra}` : lightBlocks
+  const limit = mode === 'full' ? 200 : 120
 
   if (bbox) {
     const [s, w, n, e] = bbox
     const area = `${s},${w},${n},${e}`
     return `
-      [out:json][timeout:35];
+      [out:json][timeout:50];
       (
         ${blocks.replaceAll('__AREA__', area)}
       );
-      out center tags 200;
+      out center tags ${limit};
     `
   }
 
   const safeCity = city.replace(/["\\]/g, '')
   return `
-    [out:json][timeout:35];
+    [out:json][timeout:50];
     area["name"="${safeCity}"]["boundary"="administrative"]->.searchArea;
     (
       ${blocks.replaceAll('__AREA__', 'area.searchArea')}
     );
-    out center tags 200;
+    out center tags ${limit};
   `
 }
 
@@ -203,12 +199,6 @@ export async function searchOverpassArenas({
   if (!trimmedCity) {
     throw new Error('Informe a cidade para realizar a busca no mapa.')
   }
-
-  const endpoints = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-  ]
 
   let bbox: [number, number, number, number] | null = null
   let resolvedCityName = trimmedCity
@@ -275,47 +265,22 @@ export async function searchOverpassArenas({
     console.warn('Nominatim geocode falhou, tentando fallback com busca por área no Overpass:', err)
   }
 
-  const overpassQuery = buildOverpassQuery(bbox, trimmedCity)
-
-  let lastError: unknown = null
-  let data: OverpassResponse | null = null
-
-  for (const endpoint of endpoints) {
+  // Consulta leve primeiro (evita 504 em cidades grandes); amplia se vier pouco resultado
+  let data = await fetchOverpassJson(buildOverpassQuery(bbox, trimmedCity, 'light'))
+  if ((data.elements?.length || 0) < 8) {
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 25000)
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        },
-        body: `data=${encodeURIComponent(overpassQuery)}`,
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeoutId)
-
-      if (!res.ok) {
-        throw new Error(`Status HTTP ${res.status} ao consultar ${endpoint}`)
-      }
-
-      data = await res.json()
-      if (data && Array.isArray(data.elements)) {
-        break
+      const fuller = await fetchOverpassJson(buildOverpassQuery(bbox, trimmedCity, 'full'))
+      if ((fuller.elements?.length || 0) > (data.elements?.length || 0)) {
+        data = fuller
       }
     } catch (err) {
-      lastError = err
-      console.warn(`Tentativa no endpoint Overpass ${endpoint} falhou:`, err)
+      console.warn('Consulta Overpass ampliada falhou; mantendo resultado leve:', err)
     }
   }
 
   if (!data || !Array.isArray(data.elements)) {
-    throw (
-      lastError ||
-      new Error(
-        'Não foi possível obter dados dos servidores do OpenStreetMap neste momento. Verifique sua conexão e tente novamente.',
-      )
+    throw new Error(
+      'Não foi possível obter dados dos servidores do OpenStreetMap neste momento. Verifique sua conexão e tente novamente.',
     )
   }
 
