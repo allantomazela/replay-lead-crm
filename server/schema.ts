@@ -78,6 +78,7 @@ export const instaladores = pgTable('instaladores', {
   email: text('email').notNull().default(''),
   website: text('website').notNull().default(''),
   cpfCnpj: text('cpf_cnpj').notNull().default(''),
+  cep: text('cep').notNull().default(''),
   endereco: text('endereco').notNull().default(''),
   cidade: text('cidade').notNull().default(''),
   estado: text('estado').notNull().default(''),

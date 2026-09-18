@@ -14,6 +14,7 @@ import {
   Phone,
   Globe,
   Mail,
+  RefreshCw,
 } from 'lucide-react'
 import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
 import {
@@ -67,10 +68,40 @@ export default function CadastroParceiros() {
   const [saving, setSaving] = useState(false)
   const [inviteUrl, setInviteUrl] = useState('')
   const [loadingInvite, setLoadingInvite] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
 
-  const load = useCallback(async () => {
-    setParceiros(await getParceiros())
-  }, [])
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setRefreshing(true)
+    try {
+      const list = await getParceiros()
+      setParceiros((prev) => {
+        if (opts?.silent && prev.length > 0) {
+          const prevIds = new Set(prev.map((p) => p.id))
+          const novos = list.filter((p) => !prevIds.has(p.id))
+          if (novos.length > 0) {
+            // toast via side-effect below after state settle — use queueMicrotask
+            queueMicrotask(() => {
+              toast({
+                title:
+                  novos.length === 1
+                    ? 'Novo cadastro recebido'
+                    : `${novos.length} novos cadastros`,
+                description:
+                  novos.length === 1
+                    ? `"${novos[0].nome}" entrou na lista.`
+                    : 'A lista foi atualizada automaticamente.',
+              })
+            })
+          }
+        }
+        return list
+      })
+      setLastUpdatedAt(new Date())
+    } finally {
+      if (!opts?.silent) setRefreshing(false)
+    }
+  }, [toast])
 
   const loadInvite = useCallback(async () => {
     setLoadingInvite(true)
@@ -91,9 +122,15 @@ export default function CadastroParceiros() {
   useEffect(() => {
     void load()
     void loadInvite()
-    const handler = () => void load()
+    const handler = () => void load({ silent: true })
     window.addEventListener('replaylead:parceiros-updated', handler)
-    return () => window.removeEventListener('replaylead:parceiros-updated', handler)
+    const pollId = window.setInterval(() => {
+      void load({ silent: true })
+    }, 12000)
+    return () => {
+      window.removeEventListener('replaylead:parceiros-updated', handler)
+      window.clearInterval(pollId)
+    }
   }, [load, loadInvite])
 
   const filtered = useMemo(() => {
@@ -275,6 +312,16 @@ export default function CadastroParceiros() {
           <ModuleSwitchLinks current="parceiros" tone="onLight" />
           <button
             type="button"
+            onClick={() => void load()}
+            disabled={refreshing}
+            className="min-h-[44px] px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-slate-50 disabled:opacity-60"
+            title="Recarregar lista"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Recarregar
+          </button>
+          <button
+            type="button"
             onClick={openCreate}
             className="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm inline-flex items-center justify-center gap-2"
           >
@@ -283,6 +330,13 @@ export default function CadastroParceiros() {
           </button>
         </div>
       </div>
+
+      {lastUpdatedAt && (
+        <p className="text-[11px] text-slate-400 -mt-3">
+          Atualizado automaticamente · última checagem às{' '}
+          {lastUpdatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -401,6 +455,13 @@ export default function CadastroParceiros() {
                   {p.cpfCnpj ? (
                     <p className="text-xs text-slate-500">CPF/CNPJ: {p.cpfCnpj}</p>
                   ) : null}
+                  {(p.cidade || p.cep) && (
+                    <p className="text-xs text-slate-500">
+                      Reside em: {p.cidade}
+                      {p.estado ? `/${p.estado}` : ''}
+                      {p.cep ? ` · CEP ${p.cep}` : ''}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-1.5">

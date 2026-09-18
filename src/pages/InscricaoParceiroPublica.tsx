@@ -8,6 +8,13 @@ import {
   validarConviteParceiro,
 } from '@/services/parceirosStorage'
 import { ApiError } from '@/lib/api'
+import {
+  cpfCnpjErrorMessage,
+  formatCepInput,
+  formatCpfCnpjInput,
+  lookupCep,
+  onlyDigits,
+} from '@/lib/brDocs'
 
 export default function InscricaoParceiroPublica() {
   const { codigo = '' } = useParams()
@@ -16,9 +23,14 @@ export default function InscricaoParceiroPublica() {
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [lookingCep, setLookingCep] = useState(false)
 
   const [nome, setNome] = useState('')
   const [cpfCnpj, setCpfCnpj] = useState('')
+  const [cep, setCep] = useState('')
+  const [cidade, setCidade] = useState('')
+  const [estado, setEstado] = useState('')
   const [email, setEmail] = useState('')
   const [whatsApp, setWhatsApp] = useState('')
   const [telefone, setTelefone] = useState('')
@@ -54,9 +66,56 @@ export default function InscricaoParceiroPublica() {
     }
   }, [codigo])
 
+  async function handleCepBlur() {
+    const digits = onlyDigits(cep)
+    if (digits.length !== 8) return
+    setLookingCep(true)
+    setFieldErrors((prev) => {
+      const next = { ...prev }
+      delete next.cep
+      return next
+    })
+    try {
+      const result = await lookupCep(digits)
+      setCep(formatCepInput(result.cep))
+      setCidade(result.cidade)
+      setEstado(result.estado)
+    } catch (err) {
+      setCidade('')
+      setEstado('')
+      setFieldErrors((prev) => ({
+        ...prev,
+        cep: err instanceof Error ? err.message : 'CEP inválido.',
+      }))
+    } finally {
+      setLookingCep(false)
+    }
+  }
+
+  function validateForm(): boolean {
+    const next: Record<string, string> = {}
+    if (!nome.trim()) next.nome = 'Informe o nome completo.'
+    const docErr = cpfCnpjErrorMessage(cpfCnpj)
+    if (docErr) next.cpfCnpj = docErr
+    if (onlyDigits(cep).length !== 8) next.cep = 'Informe um CEP válido.'
+    if (!cidade.trim()) next.cidade = 'Informe o CEP para preencher a cidade.'
+    if (onlyDigits(whatsApp).length < 10) next.whatsApp = 'Informe um WhatsApp válido.'
+    const regioes = cidades
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (regioes.length === 0) next.cidades = 'Informe ao menos uma cidade de atendimento.'
+    setFieldErrors(next)
+    return Object.keys(next).length === 0
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!validateForm()) {
+      setError('Revise os campos destacados antes de enviar.')
+      return
+    }
     setSaving(true)
     try {
       const regioesAtendimento = cidades
@@ -67,6 +126,9 @@ export default function InscricaoParceiroPublica() {
         codigo: codigo.trim(),
         nome: nome.trim(),
         cpfCnpj,
+        cep,
+        cidade: cidade.trim(),
+        estado: estado.trim(),
         whatsApp,
         telefone,
         email,
@@ -134,7 +196,8 @@ export default function InscricaoParceiroPublica() {
                   Cadastro de Parceiro Instalador
                 </h1>
                 <p className="text-sm text-slate-300 max-w-sm mx-auto leading-relaxed">
-                  Preencha os dados para se candidatar à parceria. Não é necessário criar login.
+                  Preencha todos os dados para se cadastrar como nosso parceiro. Não é necessário
+                  criar cadastro.
                 </p>
               </div>
             </div>
@@ -149,7 +212,7 @@ export default function InscricaoParceiroPublica() {
           onSubmit={(e) => void handleSubmit(e)}
           className="bg-white rounded-2xl shadow-xl border border-slate-200 p-5 sm:p-6 space-y-4"
         >
-          <Field label="Nome completo *">
+          <Field label="Nome completo *" error={fieldErrors.nome}>
             <input
               required
               value={nome}
@@ -159,13 +222,22 @@ export default function InscricaoParceiroPublica() {
             />
           </Field>
 
-          <Field label="CPF ou CNPJ *">
+          <Field label="CPF ou CNPJ *" error={fieldErrors.cpfCnpj}>
             <input
               required
               value={cpfCnpj}
-              onChange={(e) => setCpfCnpj(e.target.value)}
+              onChange={(e) => setCpfCnpj(formatCpfCnpjInput(e.target.value))}
+              onBlur={() => {
+                const msg = cpfCnpjErrorMessage(cpfCnpj)
+                setFieldErrors((prev) => {
+                  const next = { ...prev }
+                  if (msg) next.cpfCnpj = msg
+                  else delete next.cpfCnpj
+                  return next
+                })
+              }}
               className="field"
-              placeholder="Somente números"
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
               inputMode="numeric"
             />
           </Field>
@@ -185,7 +257,34 @@ export default function InscricaoParceiroPublica() {
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="WhatsApp *">
+            <Field label="CEP (residência) *" error={fieldErrors.cep}>
+              <div className="relative">
+                <input
+                  required
+                  value={cep}
+                  onChange={(e) => setCep(formatCepInput(e.target.value))}
+                  onBlur={() => void handleCepBlur()}
+                  className="field"
+                  placeholder="00000-000"
+                  inputMode="numeric"
+                />
+                {lookingCep && (
+                  <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                )}
+              </div>
+            </Field>
+            <Field label="Cidade / UF *" error={fieldErrors.cidade}>
+              <input
+                readOnly
+                value={cidade && estado ? `${cidade} / ${estado}` : ''}
+                className="field bg-slate-50"
+                placeholder="Preenchido pelo CEP"
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="WhatsApp *" error={fieldErrors.whatsApp}>
               <input
                 required
                 value={whatsApp}
@@ -225,7 +324,7 @@ export default function InscricaoParceiroPublica() {
             />
           </Field>
 
-          <Field label="Cidades de suporte e instalação *">
+          <Field label="Cidades de suporte e instalação *" error={fieldErrors.cidades}>
             <textarea
               required
               rows={3}
@@ -236,7 +335,7 @@ export default function InscricaoParceiroPublica() {
             />
             <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-1">
               <MapPin className="w-3 h-3" />
-              Separe as cidades por vírgula
+              Separe as cidades por vírgula (onde você atende)
             </p>
           </Field>
 
@@ -248,7 +347,7 @@ export default function InscricaoParceiroPublica() {
 
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || lookingCep}
             className="w-full min-h-[48px] rounded-xl bg-[#03045e] hover:bg-[#020330] text-white font-semibold text-sm disabled:opacity-60"
           >
             {saving ? 'Enviando...' : 'Enviar cadastro'}
@@ -282,11 +381,20 @@ function Shell({ children }: { children: ReactNode }) {
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string
+  error?: string
+  children: ReactNode
+}) {
   return (
     <div className="space-y-1">
       <label className="text-xs font-semibold text-slate-700">{label}</label>
       {children}
+      {error ? <p className="text-[11px] text-rose-600">{error}</p> : null}
     </div>
   )
 }

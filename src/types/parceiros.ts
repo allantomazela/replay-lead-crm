@@ -14,6 +14,7 @@ export interface ParceiroInstalador {
   email: string
   website?: string
   cpfCnpj?: string
+  cep?: string
   endereco: string
   cidade: string
   estado: string

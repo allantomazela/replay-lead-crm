@@ -120,6 +120,9 @@ export async function enviarInscricaoParceiroPublica(payload: {
   codigo: string
   nome: string
   cpfCnpj: string
+  cep: string
+  cidade: string
+  estado: string
   whatsApp: string
   telefone?: string
   email?: string

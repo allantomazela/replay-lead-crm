@@ -13,6 +13,7 @@ import {
   userPreferences,
 } from './schema'
 import { requireAuth, type AuthVariables } from './auth'
+import { isValidCpfOrCnpj, onlyDigits as digitsOnly } from './brDocs'
 
 const DEFAULT_TEMPLATES = [
   {
@@ -560,6 +561,7 @@ function mapInstalador(row: typeof instaladores.$inferSelect) {
     email: row.email,
     website: row.website || '',
     cpfCnpj: row.cpfCnpj || '',
+    cep: row.cep || '',
     endereco: row.endereco,
     cidade: row.cidade,
     estado: row.estado,
@@ -573,11 +575,7 @@ function mapInstalador(row: typeof instaladores.$inferSelect) {
 }
 
 function onlyDigits(value: unknown): string {
-  return String(value || '').replace(/\D/g, '')
-}
-
-function isValidCpfCnpj(digits: string): boolean {
-  return digits.length === 11 || digits.length === 14
+  return digitsOnly(value)
 }
 
 function parseCidadesAtendimento(raw: unknown): string[] {
@@ -663,6 +661,7 @@ app.post('/api/instaladores', async (c) => {
       email: body.email || '',
       website: body.website || '',
       cpfCnpj: onlyDigits(body.cpfCnpj || body.cpf_cnpj || ''),
+      cep: onlyDigits(body.cep || ''),
       endereco: body.endereco || '',
       cidade: body.cidade || '',
       estado: body.estado || '',
@@ -699,6 +698,7 @@ app.post('/api/instaladores/bulk', async (c) => {
     email: String(item.email || ''),
     website: String(item.website || ''),
     cpfCnpj: onlyDigits(item.cpfCnpj || item.cpf_cnpj || ''),
+    cep: onlyDigits(item.cep || ''),
     endereco: String(item.endereco || ''),
     cidade: String(item.cidade || ''),
     estado: String(item.estado || ''),
@@ -736,6 +736,7 @@ app.patch('/api/instaladores/:id', async (c) => {
   if (body.cpfCnpj !== undefined || body.cpf_cnpj !== undefined) {
     updates.cpfCnpj = onlyDigits(body.cpfCnpj ?? body.cpf_cnpj)
   }
+  if (body.cep !== undefined) updates.cep = onlyDigits(body.cep)
   if (body.endereco !== undefined) updates.endereco = body.endereco
   if (body.cidade !== undefined) updates.cidade = body.cidade
   if (body.estado !== undefined) updates.estado = body.estado
@@ -893,17 +894,26 @@ app.post('/api/public/parceiros-inscricao', async (c) => {
   const codigo = String(body.codigo || '').trim().toLowerCase()
   const nome = String(body.nome || '').trim()
   const cpfCnpj = onlyDigits(body.cpfCnpj || body.cpf_cnpj)
+  const cep = onlyDigits(body.cep)
   const whatsapp = onlyDigits(body.whatsApp || body.whatsapp)
   const telefone = onlyDigits(body.telefone)
   const email = String(body.email || '').trim()
   const website = String(body.website || body.site || '').trim()
+  const cidade = String(body.cidade || '').trim()
+  const estado = String(body.estado || '').trim().toUpperCase()
   const regioesAtendimento = parseCidadesAtendimento(body.regioesAtendimento || body.cidades)
   const tipo = String(body.tipo || 'Instalador de Câmeras / CFTV')
 
   if (!codigo) return c.json({ error: 'Código do convite obrigatório.' }, 400)
   if (!nome) return c.json({ error: 'Informe o nome completo.' }, 400)
-  if (!isValidCpfCnpj(cpfCnpj)) {
-    return c.json({ error: 'CPF ou CNPJ inválido. Use 11 ou 14 dígitos.' }, 400)
+  if (!isValidCpfOrCnpj(cpfCnpj)) {
+    return c.json({ error: 'CPF ou CNPJ inválido. Verifique os dígitos.' }, 400)
+  }
+  if (cep.length !== 8) {
+    return c.json({ error: 'Informe um CEP válido com 8 dígitos.' }, 400)
+  }
+  if (!cidade) {
+    return c.json({ error: 'Informe a cidade de residência (via CEP).' }, 400)
   }
   if (!whatsapp || whatsapp.length < 10) {
     return c.json({ error: 'Informe um WhatsApp válido.' }, 400)
@@ -923,7 +933,6 @@ app.post('/api/public/parceiros-inscricao', async (c) => {
   }
 
   const now = new Date()
-  const cidadePrincipal = regioesAtendimento[0]
   const [row] = await db
     .insert(instaladores)
     .values({
@@ -940,9 +949,10 @@ app.post('/api/public/parceiros-inscricao', async (c) => {
       email,
       website,
       cpfCnpj,
+      cep,
       endereco: '',
-      cidade: cidadePrincipal,
-      estado: '',
+      cidade,
+      estado,
       regioesAtendimento,
       observacoes: 'Cadastro via formulário público de parceria.',
       status: 'A Contatar',
