@@ -49,7 +49,9 @@ const QUERY_BY_TIPO: Record<Exclude<TipoParceiroBusca, 'Todos'>, string[]> = {
 function cleanPhone(phone?: string | null): string {
   if (!phone) return ''
   const digits = phone.replace(/\D/g, '')
+  if (!digits) return ''
   if (digits.length === 10 || digits.length === 11) return `55${digits}`
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) return digits
   return digits
 }
 
@@ -127,10 +129,11 @@ export async function searchGoogleParceiros(params: {
   if (!cidade) throw new Error('Informe a cidade para buscar no Google.')
 
   const tipo = (params.tipo || 'Todos') as TipoParceiroBusca
-  const onlyWithPhone = params.onlyWithPhone !== false
+  // Só filtra telefone quando o cliente pede explicitamente
+  const onlyWithPhone = params.onlyWithPhone === true
   const queries = buildQueries(cidade, estado, tipo)
   const seen = new Set<string>()
-  const results: ParceiroGoogleResult[] = []
+  const allResults: ParceiroGoogleResult[] = []
 
   for (const textQuery of queries) {
     const data = await searchTextOnce(apiKey, textQuery)
@@ -145,10 +148,9 @@ export async function searchGoogleParceiros(params: {
       seen.add(placeId)
 
       const phone = cleanPhone(place.internationalPhoneNumber || place.nationalPhoneNumber)
-      if (onlyWithPhone && !phone) continue
 
       const mappedTipo = detectTipo(nome, tipo === 'Todos' ? 'Todos' : tipo)
-      results.push({
+      allResults.push({
         id: `google-${placeId.replace(/\//g, '-')}`,
         nome,
         tipo: mappedTipo,
@@ -169,14 +171,36 @@ export async function searchGoogleParceiros(params: {
     }
   }
 
-  results.sort((a, b) => {
+  allResults.sort((a, b) => {
     if (Boolean(a.whatsApp) === Boolean(b.whatsApp)) return a.nome.localeCompare(b.nome, 'pt-BR')
     return a.whatsApp ? -1 : 1
+  })
+
+  const withPhoneCount = allResults.filter((r) => Boolean(r.whatsApp)).length
+  let results = allResults
+  if (onlyWithPhone) {
+    results = allResults.filter((r) => Boolean(r.whatsApp))
+    if (results.length === 0 && allResults.length > 0) {
+      results = allResults
+      queries.push(
+        `aviso: nenhum telefone disponível no Google para esta busca; exibindo ${allResults.length} profissionais sem telefone`,
+      )
+    }
+  }
+
+  console.info('[google-parceiros]', {
+    cidade,
+    estado,
+    tipo,
+    onlyWithPhone,
+    queries: queries.length,
+    withPhone: withPhoneCount,
+    returned: results.length,
   })
 
   return {
     results,
     queries,
-    withPhone: results.filter((r) => Boolean(r.whatsApp)).length,
+    withPhone: withPhoneCount,
   }
 }

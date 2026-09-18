@@ -119,7 +119,7 @@ export async function searchParceirosPlaces(params: {
   })
 }
 
-/** @deprecated Use searchParceirosPlaces (Geoapify) */
+/** Alias — mesma busca Google Places */
 export async function searchParceirosGoogle(params: {
   cidade: string
   estado: string

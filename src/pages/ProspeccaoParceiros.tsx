@@ -29,7 +29,7 @@ import { useToast } from '@/hooks/use-toast'
 import { formatPhoneNumber } from '@/lib/format'
 import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
 
-type FonteBusca = 'geoapify' | 'osm'
+type FonteBusca = 'google' | 'osm'
 
 export default function ProspeccaoParceiros() {
   const { toast } = useToast()
@@ -38,7 +38,7 @@ export default function ProspeccaoParceiros() {
   const [cidade, setCidade] = useState('São Paulo')
   const [estado, setEstado] = useState('SP')
   const [tipo, setTipo] = useState('Todos')
-  const [fonte, setFonte] = useState<FonteBusca>('geoapify')
+  const [fonte, setFonte] = useState<FonteBusca>('google')
   const [onlyWithPhone, setOnlyWithPhone] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [results, setResults] = useState<ParceiroInstalador[]>([])
@@ -95,7 +95,7 @@ export default function ProspeccaoParceiros() {
       let data: ParceiroInstalador[] = []
       let withPhone = 0
 
-      if (searchFonte === 'geoapify') {
+      if (searchFonte === 'google') {
         const payload = await searchParceirosPlaces({
           cidade: searchCidade.trim(),
           estado: searchEstado.trim(),
@@ -140,11 +140,11 @@ export default function ProspeccaoParceiros() {
       }
 
       const phoneHint =
-        searchFonte === 'geoapify' && data.length > 0 && withPhone === 0
-          ? ' Nenhum telefone no Geoapify para esta cidade — use endereço/site ou tente outra cidade.'
+        searchFonte === 'google' && data.length > 0 && withPhone === 0
+          ? ' Nenhum telefone no Google para esta cidade — use endereço/site ou tente outra cidade.'
           : ''
       toast({
-        title: searchFonte === 'geoapify' ? 'Busca Geoapify concluída' : 'Busca no mapa concluída',
+        title: searchFonte === 'google' ? 'Busca Google concluída' : 'Busca no mapa concluída',
         description: `${data.length} profissionais · ${withPhone} com telefone para contato.${phoneHint}`,
       })
     } catch (err) {
@@ -168,7 +168,7 @@ export default function ProspeccaoParceiros() {
       toSave.map((p) => ({
         ...p,
         status: 'A Contatar',
-        origem: p.origem || (fonte === 'geoapify' ? 'geoapify' : 'osm'),
+        origem: p.origem || (fonte === 'google' ? 'google' : 'osm'),
         regioesAtendimento: p.regioesAtendimento?.length ? p.regioesAtendimento : [p.cidade],
       })),
     )
@@ -183,7 +183,7 @@ export default function ProspeccaoParceiros() {
     await addParceiro({
       ...parceiro,
       status: 'A Contatar',
-      origem: parceiro.origem || (fonte === 'geoapify' ? 'geoapify' : 'osm'),
+      origem: parceiro.origem || (fonte === 'google' ? 'google' : 'osm'),
       regioesAtendimento: parceiro.regioesAtendimento?.length
         ? parceiro.regioesAtendimento
         : [parceiro.cidade],
@@ -228,7 +228,7 @@ export default function ProspeccaoParceiros() {
               Localize profissionais com telefone para parceria
             </h2>
             <p className="text-sm text-slate-300 mt-2 max-w-2xl">
-              Busque CFTV, eletricistas e segurança pelo Geoapify (com telefone) ou pelo mapa OSM, e
+              Busque CFTV, eletricistas e segurança pelo Google Places (com telefone) ou pelo mapa OSM, e
               salve no cadastro para entrar em contato.
             </p>
           </div>
@@ -247,13 +247,13 @@ export default function ProspeccaoParceiros() {
           <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50">
             <button
               type="button"
-              onClick={() => setFonte('geoapify')}
+              onClick={() => setFonte('google')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
-                fonte === 'geoapify' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
+                fonte === 'google' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
               }`}
             >
               <Phone className="w-3.5 h-3.5" />
-              Geoapify (telefones)
+              Google (telefones)
             </button>
             <button
               type="button"
@@ -316,17 +316,17 @@ export default function ProspeccaoParceiros() {
             >
               {isSearching ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
-              ) : fonte === 'geoapify' ? (
+              ) : fonte === 'google' ? (
                 <Phone className="w-4 h-4" />
               ) : (
                 <Search className="w-4 h-4" />
               )}
-              {fonte === 'geoapify' ? 'Buscar no Geoapify' : 'Buscar no mapa'}
+              {fonte === 'google' ? 'Buscar no Google' : 'Buscar no mapa'}
             </button>
           </div>
         </form>
 
-        {fonte === 'geoapify' && (
+        {fonte === 'google' && (
           <label className="inline-flex items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"
@@ -334,7 +334,7 @@ export default function ProspeccaoParceiros() {
               onChange={(e) => setOnlyWithPhone(e.target.checked)}
               className="rounded border-slate-300"
             />
-            Só listar quem tem telefone (em SP muitos não têm no Geoapify — deixe desmarcado)
+            Só listar quem tem telefone (recomendado para contato)
           </label>
         )}
 
@@ -475,9 +475,9 @@ export default function ProspeccaoParceiros() {
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900">
                         {p.nome}
-                        {(p.origem === 'geoapify' || p.origem === 'google') && (
+                        {(p.origem === 'google' || p.origem === 'geoapify') && (
                           <span className="ml-2 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                            {p.origem === 'geoapify' ? 'Geoapify' : 'Google'}
+                            {p.origem === 'google' ? 'Google' : 'Geoapify'}
                           </span>
                         )}
                         {newIds.has(p.id) && (

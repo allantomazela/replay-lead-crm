@@ -52,7 +52,7 @@ export default function Layout() {
     if (location.pathname.startsWith('/parceiros')) {
       return {
         title: 'Prospecção de Parceiros',
-        subtitle: 'Localize CFTV, eletricistas e segurança via Geoapify ou OpenStreetMap',
+        subtitle: 'Localize CFTV, eletricistas e segurança via Google Places ou OpenStreetMap',
         icon: Wrench,
       }
     }
