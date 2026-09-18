@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { Menu, RotateCcw, Compass, Kanban, BarChart3, MessageSquareText } from 'lucide-react'
+import {
+  Menu,
+  RotateCcw,
+  Compass,
+  Kanban,
+  BarChart3,
+  MessageSquareText,
+  Wrench,
+  Users,
+} from 'lucide-react'
 import { resetToSeedData } from '@/services/storage'
 import { resetTemplatesToDefault } from '@/services/templates'
 import { useToast } from '@/hooks/use-toast'
@@ -33,8 +42,22 @@ export default function Layout() {
         icon: MessageSquareText,
       }
     }
+    if (location.pathname === '/parceiros/cadastro') {
+      return {
+        title: 'Cadastro de Parceiros',
+        subtitle: 'Instaladores salvos, status e regiões de atendimento',
+        icon: Users,
+      }
+    }
+    if (location.pathname.startsWith('/parceiros')) {
+      return {
+        title: 'Prospecção de Parceiros',
+        subtitle: 'Localize CFTV, eletricistas e segurança via Geoapify ou OpenStreetMap',
+        icon: Wrench,
+      }
+    }
     return {
-      title: 'Dashboard de Prospecção',
+      title: 'Prospecção de Arenas',
       subtitle: 'Descubra arenas esportivas pelo OpenStreetMap ou importe via CSV',
       icon: Compass,
     }

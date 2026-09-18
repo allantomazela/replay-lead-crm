@@ -29,6 +29,7 @@ const App = () => (
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Index />} />
+            <Route path="/arenas" element={<Index />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/metricas" element={<Metricas />} />
             <Route path="/mensagens" element={<Mensagens />} />

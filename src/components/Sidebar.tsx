@@ -49,42 +49,58 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
     return () => window.removeEventListener('arenalead:arenas-updated', handler)
   }, [])
 
-  const navItems = [
+  const navSections = [
     {
-      to: '/',
-      label: 'Dashboard de Prospecção',
-      icon: Compass,
-      subtitle: 'Captura via OpenStreetMap & CSV',
+      title: 'Arenas',
+      items: [
+        {
+          to: '/',
+          label: 'Prospecção de Arenas',
+          icon: Compass,
+          subtitle: 'Beach tennis, society e vôlei (OSM/CSV)',
+          end: true,
+        },
+        {
+          to: '/pipeline',
+          label: 'Pipeline de Vendas',
+          icon: Kanban,
+          subtitle: 'Funil Kanban de 5 estágios',
+          end: false,
+        },
+        {
+          to: '/metricas',
+          label: 'Métricas',
+          icon: BarChart3,
+          subtitle: 'KPIs, conversão e desempenho',
+          end: false,
+        },
+        {
+          to: '/mensagens',
+          label: 'Mensagens',
+          icon: MessageSquareText,
+          subtitle: 'Modelos de WhatsApp e E-mail',
+          end: false,
+        },
+      ],
     },
     {
-      to: '/pipeline',
-      label: 'Pipeline de Vendas',
-      icon: Kanban,
-      subtitle: 'Funil Kanban de 5 estágios',
-    },
-    {
-      to: '/metricas',
-      label: 'Métricas',
-      icon: BarChart3,
-      subtitle: 'KPIs, conversão e desempenho',
-    },
-    {
-      to: '/mensagens',
-      label: 'Mensagens',
-      icon: MessageSquareText,
-      subtitle: 'Modelos de WhatsApp e E-mail',
-    },
-    {
-      to: '/parceiros',
-      label: 'Parceiros — Prospecção',
-      icon: Wrench,
-      subtitle: 'CFTV, eletricista e segurança',
-    },
-    {
-      to: '/parceiros/cadastro',
-      label: 'Parceiros — Cadastro',
-      icon: Users,
-      subtitle: 'Lista e cidades de atendimento',
+      title: 'Parceiros Instaladores',
+      items: [
+        {
+          to: '/parceiros',
+          label: 'Prospecção de Parceiros',
+          icon: Wrench,
+          subtitle: 'CFTV, eletricista e segurança',
+          end: true,
+        },
+        {
+          to: '/parceiros/cadastro',
+          label: 'Cadastro de Parceiros',
+          icon: Users,
+          subtitle: 'Lista e cidades de atendimento',
+          end: false,
+        },
+      ],
     },
   ]
 
@@ -120,50 +136,61 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       </div>
 
       {/* Navigation links */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5">
-        <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Módulos Principais
-        </div>
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = location.pathname === item.to
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onCloseMobile}
-              className={({ isActive: active }) =>
-                cn(
-                  'group flex items-start gap-3 px-3.5 py-3 rounded-xl transition-all duration-150 relative text-left',
-                  active
-                    ? 'bg-[#03045e] text-white shadow-lg shadow-violet-900/30 font-semibold'
-                    : 'text-slate-300 hover:bg-slate-800/90 hover:text-white',
-                )
-              }
-            >
-              {isActive && (
-                <span className="absolute left-0 top-2 bottom-2 w-1 bg-white rounded-r-full" />
-              )}
-              <Icon
-                className={cn(
-                  'w-5 h-5 mt-0.5 shrink-0 transition-transform group-hover:scale-105',
-                  isActive ? 'text-white' : 'text-slate-400 group-hover:text-violet-300',
-                )}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold leading-tight">{item.label}</div>
-                <div
-                  className={cn(
-                    'text-[11px] truncate mt-0.5',
-                    isActive ? 'text-violet-200' : 'text-slate-400',
-                  )}
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        {navSections.map((section) => (
+          <div key={section.title} className="space-y-1.5">
+            <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {section.title}
+            </div>
+            {section.items.map((item) => {
+              const Icon = item.icon
+              const isActive =
+                item.to === '/'
+                  ? location.pathname === '/' || location.pathname === '/arenas'
+                  : item.end
+                    ? location.pathname === item.to
+                    : location.pathname === item.to ||
+                      location.pathname.startsWith(`${item.to}/`)
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={onCloseMobile}
+                  className={({ isActive: active }) =>
+                    cn(
+                      'group flex items-start gap-3 px-3.5 py-3 rounded-xl transition-all duration-150 relative text-left',
+                      active
+                        ? 'bg-[#03045e] text-white shadow-lg shadow-violet-900/30 font-semibold'
+                        : 'text-slate-300 hover:bg-slate-800/90 hover:text-white',
+                    )
+                  }
                 >
-                  {item.subtitle}
-                </div>
-              </div>
-            </NavLink>
-          )
-        })}
+                  {isActive && (
+                    <span className="absolute left-0 top-2 bottom-2 w-1 bg-white rounded-r-full" />
+                  )}
+                  <Icon
+                    className={cn(
+                      'w-5 h-5 mt-0.5 shrink-0 transition-transform group-hover:scale-105',
+                      isActive ? 'text-white' : 'text-slate-400 group-hover:text-violet-300',
+                    )}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold leading-tight">{item.label}</div>
+                    <div
+                      className={cn(
+                        'text-[11px] truncate mt-0.5',
+                        isActive ? 'text-violet-200' : 'text-slate-400',
+                      )}
+                    >
+                      {item.subtitle}
+                    </div>
+                  </div>
+                </NavLink>
+              )
+            })}
+          </div>
+        ))}
 
         {/* Quick Funnel Stats */}
         <div className="pt-6 px-3">
