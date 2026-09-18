@@ -17,6 +17,12 @@ const ENDPOINTS = [
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ]
 
+const NAME_REGEX =
+  'cftv|cctv|c[aâ]mera|camera|alarme|eletric|el[eé]tric|seguran[cç]a|monitoramento|vigil[aâ]ncia|circuito fechado|chaveiro'
+
+const NOISE_NAME =
+  /americanas|magazine\s*luiza|magalu|casas\s*bahia|carrefour|polishop|sam'?s\s*club|atacad|extra\s*hiper|i\s*place/i
+
 function buildAddress(tags: Record<string, string> = {}): string {
   const street = tags['addr:street'] || tags['addr:road'] || tags['addr:place'] || ''
   const num = tags['addr:housenumber'] || ''
@@ -27,31 +33,37 @@ function buildAddress(tags: Record<string, string> = {}): string {
   return parts.join(' - ') || 'Endereço não informado via OSM'
 }
 
+function textBlob(tags: Record<string, string> = {}): string {
+  return [
+    tags.craft,
+    tags.shop,
+    tags.office,
+    tags.amenity,
+    tags.name,
+    tags['name:pt'],
+    tags.operator,
+    tags.brand,
+    tags.description,
+    tags['company'],
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
 function mapTipoParceiro(tags: Record<string, string> = {}): TipoParceiro {
   const craft = (tags.craft || '').toLowerCase()
   const shop = (tags.shop || '').toLowerCase()
   const office = (tags.office || '').toLowerCase()
-  const name = (
-    tags.name ||
-    tags['name:pt'] ||
-    tags.operator ||
-    tags.description ||
-    ''
-  ).toLowerCase()
-  const all = `${craft} ${shop} ${office} ${name}`
+  const all = textBlob(tags)
 
-  if (craft === 'electrician' || all.includes('eletric') || all.includes('elétrica')) {
+  if (craft === 'electrician' || all.includes('eletric') || all.includes('elétrica') || all.includes('eletrica')) {
     return 'Eletricista'
   }
 
   if (
-    all.includes('cftv') ||
-    all.includes('cctv') ||
-    all.includes('câmera') ||
-    all.includes('camera') ||
-    all.includes('monitoramento') ||
-    (shop === 'security' &&
-      (all.includes('camera') || all.includes('câmera') || all.includes('cftv')))
+    /cftv|cctv|c[aâ]mera|camera|monitoramento|circuito fechado/.test(all) ||
+    (shop === 'security' && /camera|c[aâ]mera|cftv|cctv/.test(all))
   ) {
     return 'Instalador de Câmeras / CFTV'
   }
@@ -59,11 +71,8 @@ function mapTipoParceiro(tags: Record<string, string> = {}): TipoParceiro {
   if (
     shop === 'security' ||
     office === 'security' ||
-    all.includes('alarme') ||
-    all.includes('segurança') ||
-    all.includes('seguranca') ||
-    all.includes('vigilância') ||
-    craft === 'locksmith'
+    craft === 'locksmith' ||
+    /alarme|seguran[cç]a|vigil[aâ]ncia|chaveiro/.test(all)
   ) {
     return 'Instalador de Segurança'
   }
@@ -83,7 +92,50 @@ function resolveName(tags: Record<string, string>, type: string, id: number): st
   if (candidate.trim()) return candidate.trim()
   const craft = tags.craft ? tags.craft.replace(/_/g, ' ') : ''
   if (craft) return `Profissional (${craft})`
+  const shop = tags.shop ? tags.shop.replace(/_/g, ' ') : ''
+  if (shop) return `Loja (${shop})`
   return `Parceiro OSM (${type} #${id})`
+}
+
+function extractPhone(tags: Record<string, string>): string {
+  const candidates = [
+    tags['contact:whatsapp'],
+    tags.whatsapp,
+    tags['contact:mobile'],
+    tags.mobile,
+    tags['phone:mobile'],
+    tags['contact:phone'],
+    tags.phone,
+    tags['phone:1'],
+    tags['contact:phone:mobile'],
+  ]
+  for (const raw of candidates) {
+    const cleaned = cleanPhoneNumber(raw)
+    if (cleaned) return cleaned
+  }
+  return ''
+}
+
+function extractWebsite(tags: Record<string, string>): string {
+  const raw = tags.website || tags['contact:website'] || tags.url || tags['contact:facebook'] || ''
+  return raw.trim()
+}
+
+function isNoise(nome: string): boolean {
+  return NOISE_NAME.test(nome)
+}
+
+function hasUsefulIdentity(tags: Record<string, string>): boolean {
+  return Boolean(
+    tags.name ||
+      tags['name:pt'] ||
+      tags.official_name ||
+      tags.operator ||
+      tags.brand ||
+      tags.craft ||
+      tags.shop ||
+      tags.office,
+  )
 }
 
 async function geocodeCity(
@@ -100,11 +152,11 @@ async function geocodeCity(
 
   const geoQuery = encodeURIComponent(`${cidade}${estado ? `, ${estado}` : ''}, Brasil`)
   const geoRes = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${geoQuery}&format=json&limit=3&addressdetails=1`,
+    `https://nominatim.openstreetmap.org/search?q=${geoQuery}&format=json&limit=5&addressdetails=1&countrycodes=br`,
     {
       headers: {
         'Accept-Language': 'pt-BR,pt;q=0.9',
-        'User-Agent': 'ReplayLeadCRM/1.0 (https://replaylead.com.br; contato@replaylead.com.br)',
+        'User-Agent': 'ReplayLeadCRM/1.0 (https://www.sistemascuesta.com.br; contato@replaylead.com.br)',
       },
     },
   )
@@ -149,59 +201,77 @@ async function geocodeCity(
   return { bbox, city: resolvedCity, uf: resolvedUf }
 }
 
+function buildSelectors(areaOrBbox: string): string {
+  return `
+      node["craft"="electrician"]${areaOrBbox};
+      way["craft"="electrician"]${areaOrBbox};
+      relation["craft"="electrician"]${areaOrBbox};
+      node["shop"="security"]${areaOrBbox};
+      way["shop"="security"]${areaOrBbox};
+      relation["shop"="security"]${areaOrBbox};
+      node["office"="security"]${areaOrBbox};
+      way["office"="security"]${areaOrBbox};
+      relation["office"="security"]${areaOrBbox};
+      node["craft"="electronics"]${areaOrBbox};
+      way["craft"="electronics"]${areaOrBbox};
+      node["craft"="locksmith"]${areaOrBbox};
+      way["craft"="locksmith"]${areaOrBbox};
+      node["shop"="electronics"]${areaOrBbox};
+      way["shop"="electronics"]${areaOrBbox};
+      node["shop"="electrical"]${areaOrBbox};
+      way["shop"="electrical"]${areaOrBbox};
+      node["name"~"${NAME_REGEX}",i]${areaOrBbox};
+      way["name"~"${NAME_REGEX}",i]${areaOrBbox};
+      node["description"~"${NAME_REGEX}",i]${areaOrBbox};
+      way["description"~"${NAME_REGEX}",i]${areaOrBbox};
+      node["brand"~"${NAME_REGEX}",i]${areaOrBbox};
+      way["brand"~"${NAME_REGEX}",i]${areaOrBbox};
+  `
+}
+
 function buildQuery(bbox: [number, number, number, number] | null, cidade: string): string {
   if (bbox) {
     const [s, w, n, e] = bbox
+    const area = `(${s},${w},${n},${e})`
     return `
-      [out:json][timeout:30];
+      [out:json][timeout:45];
       (
-        node["craft"="electrician"](${s},${w},${n},${e});
-        way["craft"="electrician"](${s},${w},${n},${e});
-        node["shop"="security"](${s},${w},${n},${e});
-        way["shop"="security"](${s},${w},${n},${e});
-        node["office"="security"](${s},${w},${n},${e});
-        way["office"="security"](${s},${w},${n},${e});
-        node["craft"="electronics"](${s},${w},${n},${e});
-        way["craft"="electronics"](${s},${w},${n},${e});
-        node["craft"="locksmith"](${s},${w},${n},${e});
-        way["craft"="locksmith"](${s},${w},${n},${e});
-        node["name"~"cftv|cctv|câmera|camera|alarme|eletricista|segurança",i](${s},${w},${n},${e});
-        way["name"~"cftv|cctv|câmera|camera|alarme|eletricista|segurança",i](${s},${w},${n},${e});
+        ${buildSelectors(area)}
       );
-      out center tags 120;
+      out center tags 200;
     `
   }
 
   const safeCity = cidade.replace(/["\\]/g, '')
   return `
-    [out:json][timeout:30];
+    [out:json][timeout:45];
     area["name"="${safeCity}"]["boundary"="administrative"]->.searchArea;
     (
-      node["craft"="electrician"](area.searchArea);
-      way["craft"="electrician"](area.searchArea);
-      node["shop"="security"](area.searchArea);
-      way["shop"="security"](area.searchArea);
-      node["office"="security"](area.searchArea);
-      way["office"="security"](area.searchArea);
-      node["craft"="electronics"](area.searchArea);
-      way["craft"="electronics"](area.searchArea);
-      node["craft"="locksmith"](area.searchArea);
-      way["craft"="locksmith"](area.searchArea);
-      node["name"~"cftv|cctv|câmera|camera|alarme|eletricista|segurança",i](area.searchArea);
-      way["name"~"cftv|cctv|câmera|camera|alarme|eletricista|segurança",i](area.searchArea);
+      ${buildSelectors('(area.searchArea)')}
     );
-    out center tags 120;
+    out center tags 200;
   `
+}
+
+function contactScore(p: ParceiroInstalador): number {
+  let score = 0
+  if (p.whatsApp) score += 3
+  if (p.email) score += 1
+  if (p.observacoes?.includes('Site:')) score += 1
+  if (p.endereco && !p.endereco.includes('não informado')) score += 1
+  return score
 }
 
 export async function searchOverpassParceiros({
   cidade,
   estado,
   tipo,
+  onlyWithPhone = false,
 }: {
   cidade: string
   estado: string
   tipo?: string
+  onlyWithPhone?: boolean
 }): Promise<ParceiroInstalador[]> {
   const trimmedCity = cidade.trim()
   const trimmedState = estado.trim()
@@ -222,7 +292,7 @@ export async function searchOverpassParceiros({
   for (const endpoint of ENDPOINTS) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 20000)
+      const timeoutId = setTimeout(() => controller.abort(), 35000)
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
@@ -250,42 +320,63 @@ export async function searchOverpassParceiros({
 
   for (const el of data.elements) {
     const tags = el.tags || {}
+    if (!hasUsefulIdentity(tags)) continue
+
     const nome = resolveName(tags, el.type, el.id)
+    if (isNoise(nome)) continue
+
     const dedupeKey = `${nome.toLowerCase()}__${(tags['addr:street'] || '').toLowerCase()}`
     if (seen.has(dedupeKey)) continue
     seen.add(dedupeKey)
 
     const detectedTipo = mapTipoParceiro(tags)
-    const rawPhone =
-      tags['contact:whatsapp'] ||
-      tags.whatsapp ||
-      tags['contact:phone'] ||
-      tags.phone ||
-      tags['contact:mobile'] ||
-      tags.mobile ||
-      ''
+    const phone = extractPhone(tags)
+    const email = tags['contact:email'] || tags.email || ''
+    const website = extractWebsite(tags)
     const city = tags['addr:city'] || geo.city
-    const uf = tags['addr:state'] || geo.uf || 'BR'
+    const uf = (tags['addr:state'] || geo.uf || 'BR').toUpperCase().replace(/^BR-/, '')
+
+    const extras = [
+      website ? `Site: ${website}` : '',
+      email ? `E-mail OSM: ${email}` : '',
+      phone ? 'Telefone encontrado no mapa.' : 'Sem telefone no OSM — complete no cadastro se necessário.',
+    ]
+      .filter(Boolean)
+      .join(' ')
 
     results.push({
       id: `osm-parceiro-${el.type}-${el.id}`,
       nome,
       tipo: detectedTipo,
-      whatsApp: cleanPhoneNumber(rawPhone),
-      email: tags['contact:email'] || tags.email || '',
+      whatsApp: phone,
+      email,
       endereco: buildAddress(tags),
       cidade: city,
       estado: uf,
       regioesAtendimento: [city],
-      observacoes: `Capturado via OpenStreetMap (${el.type} #${el.id}).`,
+      observacoes: `Capturado via OpenStreetMap (${el.type} #${el.id}). ${extras}`,
       status: 'A Contatar',
       origem: 'osm',
       createdAt: new Date().toISOString(),
     })
   }
 
+  let filtered = results
   if (tipo && tipo !== 'Todos') {
-    return results.filter((r) => r.tipo === tipo)
+    filtered = results.filter((r) => r.tipo === tipo)
   }
-  return results
+
+  if (onlyWithPhone) {
+    const withPhone = filtered.filter((r) => Boolean(r.whatsApp))
+    // Soft fallback: se o filtro esvaziar, devolve todos ordenados
+    filtered = withPhone.length > 0 ? withPhone : filtered
+  }
+
+  filtered.sort((a, b) => {
+    const scoreDiff = contactScore(b) - contactScore(a)
+    if (scoreDiff !== 0) return scoreDiff
+    return a.nome.localeCompare(b.nome, 'pt-BR')
+  })
+
+  return filtered
 }

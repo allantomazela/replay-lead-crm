@@ -9,8 +9,8 @@ import {
   RefreshCw,
   CheckSquare,
   Square,
-  Phone,
   Map,
+  Phone,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ParceiroInstalador, RegiaoParceiroSalva, TIPOS_PARCEIRO } from '@/types/parceiros'
@@ -22,14 +22,11 @@ import {
   deleteRegiaoParceiro,
   getParceiros,
   getRegioesParceiros,
-  searchParceirosPlaces,
   updateRegiaoParceiro,
 } from '@/services/parceirosStorage'
 import { useToast } from '@/hooks/use-toast'
 import { formatPhoneNumber } from '@/lib/format'
 import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
-
-type FonteBusca = 'google' | 'osm'
 
 export default function ProspeccaoParceiros() {
   const { toast } = useToast()
@@ -38,7 +35,6 @@ export default function ProspeccaoParceiros() {
   const [cidade, setCidade] = useState('São Paulo')
   const [estado, setEstado] = useState('SP')
   const [tipo, setTipo] = useState('Todos')
-  const [fonte, setFonte] = useState<FonteBusca>('google')
   const [onlyWithPhone, setOnlyWithPhone] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [results, setResults] = useState<ParceiroInstalador[]>([])
@@ -73,13 +69,12 @@ export default function ProspeccaoParceiros() {
     searchCidade: string,
     searchEstado: string,
     searchTipo: string,
-    searchFonte: FonteBusca = fonte,
     regiao?: RegiaoParceiroSalva,
   ) {
     if (!searchCidade.trim()) {
       toast({
         title: 'Cidade não informada',
-        description: 'Digite a cidade para localizar profissionais.',
+        description: 'Digite a cidade para localizar profissionais no mapa.',
         variant: 'destructive',
       })
       return
@@ -92,26 +87,13 @@ export default function ProspeccaoParceiros() {
     setLastWithPhone(0)
 
     try {
-      let data: ParceiroInstalador[] = []
-      let withPhone = 0
-
-      if (searchFonte === 'google') {
-        const payload = await searchParceirosPlaces({
-          cidade: searchCidade.trim(),
-          estado: searchEstado.trim(),
-          tipo: searchTipo === 'Todos' ? 'Todos' : searchTipo,
-          onlyWithPhone,
-        })
-        data = payload.results
-        withPhone = payload.withPhone
-      } else {
-        data = await searchOverpassParceiros({
-          cidade: searchCidade.trim(),
-          estado: searchEstado.trim(),
-          tipo: searchTipo === 'Todos' ? undefined : searchTipo,
-        })
-        withPhone = data.filter((p) => Boolean(p.whatsApp)).length
-      }
+      const data = await searchOverpassParceiros({
+        cidade: searchCidade.trim(),
+        estado: searchEstado.trim(),
+        tipo: searchTipo === 'Todos' ? undefined : searchTipo,
+        onlyWithPhone,
+      })
+      const withPhone = data.filter((p) => Boolean(p.whatsApp)).length
 
       setResults(data)
       setLastWithPhone(withPhone)
@@ -140,12 +122,13 @@ export default function ProspeccaoParceiros() {
       }
 
       const phoneHint =
-        searchFonte === 'google' && data.length > 0 && withPhone === 0
-          ? ' Nenhum telefone no Google para esta cidade — use endereço/site ou tente outra cidade.'
+        data.length > 0 && withPhone === 0
+          ? ' Nenhum telefone no OSM para esta cidade — salve e complete o contato no cadastro.'
           : ''
+
       toast({
-        title: searchFonte === 'google' ? 'Busca Google concluída' : 'Busca no mapa concluída',
-        description: `${data.length} profissionais · ${withPhone} com telefone para contato.${phoneHint}`,
+        title: 'Busca no mapa concluída',
+        description: `${data.length} profissionais · ${withPhone} com telefone.${phoneHint}`,
       })
     } catch (err) {
       toast({
@@ -168,7 +151,7 @@ export default function ProspeccaoParceiros() {
       toSave.map((p) => ({
         ...p,
         status: 'A Contatar',
-        origem: p.origem || (fonte === 'google' ? 'google' : 'osm'),
+        origem: p.origem || 'osm',
         regioesAtendimento: p.regioesAtendimento?.length ? p.regioesAtendimento : [p.cidade],
       })),
     )
@@ -183,7 +166,7 @@ export default function ProspeccaoParceiros() {
     await addParceiro({
       ...parceiro,
       status: 'A Contatar',
-      origem: parceiro.origem || (fonte === 'google' ? 'google' : 'osm'),
+      origem: parceiro.origem || 'osm',
       regioesAtendimento: parceiro.regioesAtendimento?.length
         ? parceiro.regioesAtendimento
         : [parceiro.cidade],
@@ -221,15 +204,15 @@ export default function ProspeccaoParceiros() {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-xs font-semibold text-emerald-200 mb-2">
-              <Phone className="w-3.5 h-3.5" />
-              Parceiros Instaladores
+              <Map className="w-3.5 h-3.5" />
+              OpenStreetMap · 100% gratuito
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Localize profissionais com telefone para parceria
+              Localize profissionais no mapa aberto
             </h2>
             <p className="text-sm text-slate-300 mt-2 max-w-2xl">
-              Busque CFTV, eletricistas e segurança pelo Google Places (com telefone) ou pelo mapa OSM, e
-              salve no cadastro para entrar em contato.
+              Busca gratuita via Nominatim + Overpass (sem chave de API). Quem tem telefone no OSM
+              aparece primeiro; os demais podem ser salvos e completados no cadastro.
             </p>
           </div>
           <ModuleSwitchLinks current="parceiros" className="shrink-0 self-start" />
@@ -244,34 +227,16 @@ export default function ProspeccaoParceiros() {
               Filtros de captura
             </h3>
           </div>
-          <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50">
-            <button
-              type="button"
-              onClick={() => setFonte('google')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
-                fonte === 'google' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
-              }`}
-            >
-              <Phone className="w-3.5 h-3.5" />
-              Google (telefones)
-            </button>
-            <button
-              type="button"
-              onClick={() => setFonte('osm')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
-                fonte === 'osm' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
-              }`}
-            >
-              <Map className="w-3.5 h-3.5" />
-              OpenStreetMap
-            </button>
-          </div>
+          <span className="text-xs text-slate-400 inline-flex items-center gap-1">
+            <Map className="w-3.5 h-3.5" />
+            Fonte: OpenStreetMap
+          </span>
         </div>
 
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            void executeSearch(cidade, estado, tipo, fonte)
+            void executeSearch(cidade, estado, tipo)
           }}
           className="grid grid-cols-1 md:grid-cols-4 gap-3"
         >
@@ -314,29 +279,22 @@ export default function ProspeccaoParceiros() {
               disabled={isSearching}
               className="w-full min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {isSearching ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : fonte === 'google' ? (
-                <Phone className="w-4 h-4" />
-              ) : (
-                <Search className="w-4 h-4" />
-              )}
-              {fonte === 'google' ? 'Buscar no Google' : 'Buscar no mapa'}
+              {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Buscar no mapa
             </button>
           </div>
         </form>
 
-        {fonte === 'google' && (
-          <label className="inline-flex items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={onlyWithPhone}
-              onChange={(e) => setOnlyWithPhone(e.target.checked)}
-              className="rounded border-slate-300"
-            />
-            Só listar quem tem telefone (recomendado para contato)
-          </label>
-        )}
+        <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={onlyWithPhone}
+            onChange={(e) => setOnlyWithPhone(e.target.checked)}
+            className="rounded border-slate-300"
+          />
+          Priorizar / filtrar quem tem telefone no OSM (muitos não têm — deixe desmarcado se a lista
+          vier vazia)
+        </label>
 
         <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end pt-2 border-t border-slate-100">
           <div className="flex-1 space-y-1">
@@ -374,7 +332,7 @@ export default function ProspeccaoParceiros() {
                       setCidade(r.cidade)
                       setEstado(r.estado)
                       setTipo(r.tipo)
-                      void executeSearch(r.cidade, r.estado, r.tipo, fonte, r)
+                      void executeSearch(r.cidade, r.estado, r.tipo, r)
                     }}
                     className="font-semibold text-slate-700 hover:text-emerald-700 flex items-center gap-1"
                   >
@@ -450,7 +408,7 @@ export default function ProspeccaoParceiros() {
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">Tipo</th>
                   <th className="px-4 py-3">Cidade</th>
-                  <th className="px-4 py-3">Telefone / WhatsApp</th>
+                  <th className="px-4 py-3">Contato</th>
                   <th className="px-4 py-3">Ação</th>
                 </tr>
               </thead>
@@ -475,23 +433,22 @@ export default function ProspeccaoParceiros() {
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900">
                         {p.nome}
-                        {p.origem === 'google' && (
-                          <span className="ml-2 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                            Google
-                          </span>
-                        )}
-                        {p.origem === 'osm' && (
-                          <span className="ml-2 text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
-                            OSM
+                        <span className="ml-2 text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+                          OSM
+                        </span>
+                        {p.whatsApp && (
+                          <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                            <Phone className="w-2.5 h-2.5" />
+                            Tel
                           </span>
                         )}
                         {newIds.has(p.id) && (
-                          <span className="ml-2 text-[10px] font-bold uppercase text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                          <span className="ml-1 text-[10px] font-bold uppercase text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
                             Novo
                           </span>
                         )}
                         {savedIds.has(p.id) && (
-                          <span className="ml-2 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                          <span className="ml-1 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
                             Salvo
                           </span>
                         )}
@@ -517,8 +474,10 @@ export default function ProspeccaoParceiros() {
                               </a>
                             )}
                           </div>
+                        ) : p.email ? (
+                          <span className="text-xs">{p.email}</span>
                         ) : (
-                          '—'
+                          <span className="text-slate-400 text-xs">Sem telefone no mapa</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -543,8 +502,8 @@ export default function ProspeccaoParceiros() {
                 {results.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                      Nenhum profissional encontrado. Tente outra cidade ou desmarque o filtro de
-                      telefone.
+                      Nenhum profissional encontrado. Tente outra cidade, tipo &quot;Todos&quot; ou
+                      desmarque o filtro de telefone.
                     </td>
                   </tr>
                 )}

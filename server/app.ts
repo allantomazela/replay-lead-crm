@@ -1,5 +1,4 @@
 import { Hono } from 'hono'
-import type { Context } from 'hono'
 import { cors } from 'hono/cors'
 import { eq, and, desc } from 'drizzle-orm'
 import { db } from './db'
@@ -796,36 +795,3 @@ app.delete('/api/regioes-parceiros/:id', async (c) => {
   if (!rows[0]) return c.json({ error: 'Região não encontrada' }, 404)
   return c.json({ ok: true })
 })
-
-async function runParceirosPlacesSearch(input: {
-  cidade: string
-  estado: string
-  tipo: string
-  onlyWithPhone: boolean
-}) {
-  const { searchGoogleParceiros } = await import('./googlePlacesParceiros')
-  return searchGoogleParceiros(input)
-}
-
-async function parceirosPlacesSearchRoute(c: Context<{ Variables: AuthVariables }>) {
-  const body = await c.req.json().catch(() => ({}))
-  const cidade = String(body.cidade || '').trim()
-  const estado = String(body.estado || '').trim()
-  const tipo = String(body.tipo || 'Todos')
-  const onlyWithPhone = body.onlyWithPhone === true
-
-  if (!cidade) {
-    return c.json({ error: 'Informe a cidade para buscar parceiros.' }, 400)
-  }
-
-  try {
-    return c.json(await runParceirosPlacesSearch({ cidade, estado, tipo, onlyWithPhone }))
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Falha na busca Google Places'
-    const status = message.includes('não configurada') ? 503 : 502
-    return c.json({ error: message }, status)
-  }
-}
-
-app.post('/api/parceiros/places-search', parceirosPlacesSearchRoute)
-app.post('/api/parceiros/google-search', parceirosPlacesSearchRoute)
