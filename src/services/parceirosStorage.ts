@@ -118,17 +118,3 @@ export async function searchParceirosPlaces(params: {
     body: JSON.stringify(params),
   })
 }
-
-/** Alias — mesma busca Google Places */
-export async function searchParceirosGoogle(params: {
-  cidade: string
-  estado: string
-  tipo?: string
-  onlyWithPhone?: boolean
-}): Promise<{
-  results: ParceiroInstalador[]
-  queries: string[]
-  withPhone: number
-}> {
-  return searchParceirosPlaces(params)
-}

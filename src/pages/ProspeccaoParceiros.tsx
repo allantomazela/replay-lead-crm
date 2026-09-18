@@ -475,9 +475,14 @@ export default function ProspeccaoParceiros() {
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900">
                         {p.nome}
-                        {(p.origem === 'google' || p.origem === 'geoapify') && (
+                        {p.origem === 'google' && (
                           <span className="ml-2 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                            {p.origem === 'google' ? 'Google' : 'Geoapify'}
+                            Google
+                          </span>
+                        )}
+                        {p.origem === 'osm' && (
+                          <span className="ml-2 text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+                            OSM
                           </span>
                         )}
                         {newIds.has(p.id) && (
