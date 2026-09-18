@@ -11,9 +11,6 @@ import {
   Share2,
   Copy,
   MessageCircle,
-  Phone,
-  Globe,
-  Mail,
   RefreshCw,
 } from 'lucide-react'
 import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
@@ -62,6 +59,8 @@ export default function CadastroParceiros() {
   const [parceiros, setParceiros] = useState<ParceiroInstalador[]>([])
   const [query, setQuery] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('Todos')
+  const [filtroCidade, setFiltroCidade] = useState('Todas')
+  const [filtroEstado, setFiltroEstado] = useState('Todos')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -133,10 +132,40 @@ export default function CadastroParceiros() {
     }
   }, [load, loadInvite])
 
+  const cidadesDisponiveis = useMemo(() => {
+    const set = new Set<string>()
+    for (const p of parceiros) {
+      if (p.cidade?.trim()) set.add(p.cidade.trim())
+      for (const c of p.regioesAtendimento || []) {
+        if (c.trim()) set.add(c.trim())
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [parceiros])
+
+  const estadosDisponiveis = useMemo(() => {
+    const set = new Set<string>()
+    for (const p of parceiros) {
+      if (p.estado?.trim()) set.add(p.estado.trim().toUpperCase())
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [parceiros])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
+    const cidadeFiltro = filtroCidade.trim().toLowerCase()
+    const ufFiltro = filtroEstado.trim().toUpperCase()
+
     return parceiros.filter((p) => {
       if (filtroTipo !== 'Todos' && p.tipo !== filtroTipo) return false
+      if (ufFiltro !== 'TODOS' && (p.estado || '').toUpperCase() !== ufFiltro) return false
+      if (cidadeFiltro !== 'todas') {
+        const reside = (p.cidade || '').toLowerCase() === cidadeFiltro
+        const atende = (p.regioesAtendimento || []).some(
+          (c) => c.trim().toLowerCase() === cidadeFiltro,
+        )
+        if (!reside && !atende) return false
+      }
       if (!q) return true
       return (
         p.nome.toLowerCase().includes(q) ||
@@ -145,7 +174,7 @@ export default function CadastroParceiros() {
         (p.regioesAtendimento || []).some((c) => c.toLowerCase().includes(q))
       )
     })
-  }, [parceiros, query, filtroTipo])
+  }, [parceiros, query, filtroTipo, filtroCidade, filtroEstado])
 
   function openCreate() {
     setEditingId(null)
@@ -371,20 +400,20 @@ export default function CadastroParceiros() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="relative md:col-span-2 xl:col-span-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nome, cidade, CPF/CNPJ ou região atendida..."
+            placeholder="Buscar por nome ou CPF/CNPJ..."
             className="w-full min-h-[44px] pl-10 pr-3 rounded-xl border border-slate-300 text-sm"
           />
         </div>
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          className="min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm bg-white md:w-64"
+          className="min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm bg-white"
         >
           <option value="Todos">Todos os tipos</option>
           {TIPOS_PARCEIRO.map((t) => (
@@ -393,141 +422,172 @@ export default function CadastroParceiros() {
             </option>
           ))}
         </select>
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className="min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm bg-white"
+        >
+          <option value="Todos">Todos os estados</option>
+          {estadosDisponiveis.map((uf) => (
+            <option key={uf} value={uf}>
+              {uf}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filtroCidade}
+          onChange={(e) => setFiltroCidade(e.target.value)}
+          className="min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm bg-white"
+        >
+          <option value="Todas">Todas as cidades</option>
+          {cidadesDisponiveis.map((cidade) => (
+            <option key={cidade} value={cidade}>
+              {cidade}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-slate-200 px-4 py-12 text-center text-slate-500 text-sm">
-          Nenhum parceiro cadastrado ainda. Use a prospecção, o formulário público ou cadastre
-          manualmente.
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-slate-800">
+            {filtered.length}{' '}
+            {filtered.length === 1 ? 'instalador' : 'instaladores'}
+          </p>
+          {(filtroCidade !== 'Todas' || filtroEstado !== 'Todos' || filtroTipo !== 'Todos' || query) && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('')
+                setFiltroTipo('Todos')
+                setFiltroCidade('Todas')
+                setFiltroEstado('Todos')
+              }}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+            >
+              Limpar filtros
+            </button>
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filtered.map((p) => {
-            const statusClass = STATUS_STYLE[p.status] || STATUS_STYLE['A Contatar']
-            const cities = p.regioesAtendimento || []
-            return (
-              <article
-                key={p.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col gap-3 hover:border-slate-300 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
-                        {p.nome}
-                      </h3>
-                      {p.origem === 'formulario' && (
-                        <span className="text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
-                          Formulário
+
+        {filtered.length === 0 ? (
+          <div className="px-4 py-12 text-center text-slate-500 text-sm">
+            Nenhum instalador encontrado com esses filtros.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Nome</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Cidade / UF</th>
+                  <th className="px-4 py-3">Atende</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">WhatsApp</th>
+                  <th className="px-4 py-3 w-40">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p) => {
+                  const statusClass = STATUS_STYLE[p.status] || STATUS_STYLE['A Contatar']
+                  const cities = p.regioesAtendimento || []
+                  return (
+                    <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/80">
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span>{p.nome}</span>
+                          {p.origem === 'formulario' && (
+                            <span className="text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+                              Formulário
+                            </span>
+                          )}
+                        </div>
+                        {p.cpfCnpj ? (
+                          <p className="text-[11px] text-slate-400 mt-0.5">{p.cpfCnpj}</p>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{p.tipo}</td>
+                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                        {p.cidade || '—'}
+                        {p.estado ? `/${p.estado}` : ''}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1 max-w-[220px]">
+                          {cities.length === 0 ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            cities.slice(0, 3).map((cidade) => (
+                              <span
+                                key={cidade}
+                                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700"
+                              >
+                                <MapPin className="w-3 h-3" />
+                                {cidade}
+                              </span>
+                            ))
+                          )}
+                          {cities.length > 3 && (
+                            <span className="text-[11px] text-slate-500">+{cities.length - 3}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex text-[11px] font-semibold px-2 py-1 rounded-full ring-1 ${statusClass}`}
+                        >
+                          {p.status}
                         </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500">{p.tipo}</p>
-                  </div>
-                  <span
-                    className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded-full ring-1 ${statusClass}`}
-                  >
-                    {p.status}
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 text-sm text-slate-600">
-                  {p.whatsApp ? (
-                    <p className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="font-medium text-slate-800">
-                        {formatPhoneNumber(p.whatsApp)}
-                      </span>
-                    </p>
-                  ) : null}
-                  {p.email ? (
-                    <p className="flex items-center gap-2 truncate">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      {p.email}
-                    </p>
-                  ) : null}
-                  {p.website ? (
-                    <p className="flex items-center gap-2 truncate">
-                      <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      {p.website}
-                    </p>
-                  ) : null}
-                  {p.cpfCnpj ? (
-                    <p className="text-xs text-slate-500">CPF/CNPJ: {p.cpfCnpj}</p>
-                  ) : null}
-                  {(p.cidade || p.cep) && (
-                    <p className="text-xs text-slate-500">
-                      Reside em: {p.cidade}
-                      {p.estado ? `/${p.estado}` : ''}
-                      {p.cep ? ` · CEP ${p.cep}` : ''}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {cities.length === 0 ? (
-                    <span className="text-xs text-slate-400">Sem cidades informadas</span>
-                  ) : (
-                    cities.slice(0, 6).map((cidade) => (
-                      <span
-                        key={cidade}
-                        className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700"
-                      >
-                        <MapPin className="w-3 h-3" />
-                        {cidade}
-                      </span>
-                    ))
-                  )}
-                  {cities.length > 6 && (
-                    <span className="text-[11px] text-slate-500 px-1 py-0.5">
-                      +{cities.length - 6}
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-auto pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openWhatsAppChat(p)}
-                    className="min-h-[40px] px-3 rounded-xl bg-[#25D366] hover:bg-[#1ebe57] text-white text-xs font-semibold inline-flex items-center gap-1.5"
-                    title="Abrir conversa no WhatsApp"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    WhatsApp
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => shareContactWhatsApp(p)}
-                    className="min-h-[40px] px-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold inline-flex items-center gap-1.5"
-                    title="Encaminhar este contato por WhatsApp"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Encaminhar contato
-                  </button>
-                  <div className="ml-auto flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(p)}
-                      className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                      aria-label="Editar"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete(p.id, p.nome)}
-                      className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                      aria-label="Excluir"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                        {p.whatsApp ? formatPhoneNumber(p.whatsApp) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openWhatsAppChat(p)}
+                            className="p-2 rounded-lg text-[#25D366] hover:bg-emerald-50"
+                            title="Abrir WhatsApp"
+                            aria-label="WhatsApp"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => shareContactWhatsApp(p)}
+                            className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50"
+                            title="Encaminhar contato"
+                            aria-label="Encaminhar contato"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(p)}
+                            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                            aria-label="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(p.id, p.nome)}
+                            className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                            aria-label="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
