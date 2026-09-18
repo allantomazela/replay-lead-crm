@@ -11,6 +11,9 @@ import {
   Share2,
   Copy,
   MessageCircle,
+  Phone,
+  Globe,
+  Mail,
 } from 'lucide-react'
 import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
 import {
@@ -28,7 +31,7 @@ import {
   updateParceiro,
 } from '@/services/parceirosStorage'
 import { useToast } from '@/hooks/use-toast'
-import { formatPhoneNumber } from '@/lib/format'
+import { cleanPhoneNumber, formatPhoneNumber } from '@/lib/format'
 
 const emptyForm = {
   nome: '',
@@ -44,6 +47,13 @@ const emptyForm = {
   regioesAtendimento: '',
   observacoes: '',
   status: 'A Contatar' as StatusParceiro,
+}
+
+const STATUS_STYLE: Record<string, string> = {
+  'A Contatar': 'bg-amber-50 text-amber-800 ring-amber-200',
+  Contatado: 'bg-sky-50 text-sky-800 ring-sky-200',
+  'Parceiro Ativo': 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  Inativo: 'bg-slate-100 text-slate-600 ring-slate-200',
 }
 
 export default function CadastroParceiros() {
@@ -210,6 +220,42 @@ export default function CadastroParceiros() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
+  function openWhatsAppChat(p: ParceiroInstalador) {
+    const digits = cleanPhoneNumber(p.whatsApp)
+    if (!digits) {
+      toast({
+        title: 'Sem WhatsApp',
+        description: 'Este parceiro não tem número cadastrado.',
+        variant: 'destructive',
+      })
+      return
+    }
+    window.open(`https://wa.me/${digits}`, '_blank', 'noopener,noreferrer')
+  }
+
+  function shareContactWhatsApp(p: ParceiroInstalador) {
+    const phone = p.whatsApp ? formatPhoneNumber(p.whatsApp) : '—'
+    const tel = p.telefone ? formatPhoneNumber(p.telefone) : ''
+    const cities = (p.regioesAtendimento || []).join(', ') || p.cidade || '—'
+    const lines = [
+      '*Contato — Parceiro Instalador Replay Sports*',
+      `Nome: ${p.nome}`,
+      `Tipo: ${p.tipo}`,
+      `WhatsApp: ${phone}`,
+    ]
+    if (tel) lines.push(`Telefone: ${tel}`)
+    if (p.email) lines.push(`E-mail: ${p.email}`)
+    if (p.website) lines.push(`Site: ${p.website}`)
+    lines.push(`Cidades: ${cities}`)
+    if (p.cpfCnpj) lines.push(`CPF/CNPJ: ${p.cpfCnpj}`)
+
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`,
+      '_blank',
+      'noopener,noreferrer',
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -222,7 +268,7 @@ export default function CadastroParceiros() {
             Instaladores e técnicos
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Cadastre parceiros ou envie o formulário público para o candidato preencher sem login.
+            Visualize contatos, compartilhe no WhatsApp e envie o formulário público de cadastro.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -244,8 +290,7 @@ export default function CadastroParceiros() {
           Formulário público para candidatos
         </div>
         <p className="text-xs text-slate-500">
-          O candidato abre o link, preenche e o cadastro entra automaticamente na sua lista (origem:
-          formulário).
+          O candidato abre o link, preenche e o cadastro entra automaticamente na sua lista.
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
@@ -296,88 +341,132 @@ export default function CadastroParceiros() {
         </select>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">CPF/CNPJ</th>
-                <th className="px-4 py-3">Regiões</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Contato</th>
-                <th className="px-4 py-3 w-24">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-medium text-slate-900">
-                    {p.nome}
-                    {p.origem === 'formulario' && (
-                      <span className="ml-2 text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
-                        Formulário
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{p.tipo}</td>
-                  <td className="px-4 py-3 text-slate-600">{p.cpfCnpj || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1 max-w-xs">
-                      {(p.regioesAtendimento || []).length === 0 ? (
-                        <span className="text-slate-400">—</span>
-                      ) : (
-                        (p.regioesAtendimento || []).map((cidade) => (
-                          <span
-                            key={cidade}
-                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700"
-                          >
-                            <MapPin className="w-3 h-3" />
-                            {cidade}
-                          </span>
-                        ))
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-slate-200 px-4 py-12 text-center text-slate-500 text-sm">
+          Nenhum parceiro cadastrado ainda. Use a prospecção, o formulário público ou cadastre
+          manualmente.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {filtered.map((p) => {
+            const statusClass = STATUS_STYLE[p.status] || STATUS_STYLE['A Contatar']
+            const cities = p.regioesAtendimento || []
+            return (
+              <article
+                key={p.id}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col gap-3 hover:border-slate-300 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
+                        {p.nome}
+                      </h3>
+                      {p.origem === 'formulario' && (
+                        <span className="text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+                          Formulário
+                        </span>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{p.status}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {p.whatsApp ? formatPhoneNumber(p.whatsApp) : p.email || '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(p)}
-                        className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                        aria-label="Editar"
+                    <p className="text-xs text-slate-500">{p.tipo}</p>
+                  </div>
+                  <span
+                    className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded-full ring-1 ${statusClass}`}
+                  >
+                    {p.status}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-sm text-slate-600">
+                  {p.whatsApp ? (
+                    <p className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="font-medium text-slate-800">
+                        {formatPhoneNumber(p.whatsApp)}
+                      </span>
+                    </p>
+                  ) : null}
+                  {p.email ? (
+                    <p className="flex items-center gap-2 truncate">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      {p.email}
+                    </p>
+                  ) : null}
+                  {p.website ? (
+                    <p className="flex items-center gap-2 truncate">
+                      <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      {p.website}
+                    </p>
+                  ) : null}
+                  {p.cpfCnpj ? (
+                    <p className="text-xs text-slate-500">CPF/CNPJ: {p.cpfCnpj}</p>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {cities.length === 0 ? (
+                    <span className="text-xs text-slate-400">Sem cidades informadas</span>
+                  ) : (
+                    cities.slice(0, 6).map((cidade) => (
+                      <span
+                        key={cidade}
+                        className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700"
                       >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(p.id, p.nome)}
-                        className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                        aria-label="Excluir"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                    Nenhum parceiro cadastrado ainda. Use a prospecção, o formulário público ou
-                    cadastre manualmente.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                        <MapPin className="w-3 h-3" />
+                        {cidade}
+                      </span>
+                    ))
+                  )}
+                  {cities.length > 6 && (
+                    <span className="text-[11px] text-slate-500 px-1 py-0.5">
+                      +{cities.length - 6}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-auto pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openWhatsAppChat(p)}
+                    className="min-h-[40px] px-3 rounded-xl bg-[#25D366] hover:bg-[#1ebe57] text-white text-xs font-semibold inline-flex items-center gap-1.5"
+                    title="Abrir conversa no WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => shareContactWhatsApp(p)}
+                    className="min-h-[40px] px-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold inline-flex items-center gap-1.5"
+                    title="Encaminhar este contato por WhatsApp"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Encaminhar contato
+                  </button>
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(p)}
+                      className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                      aria-label="Editar"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(p.id, p.nome)}
+                      className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                      aria-label="Excluir"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            )
+          })}
         </div>
-      </div>
+      )}
 
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

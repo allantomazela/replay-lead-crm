@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
-import { CheckCircle2, Loader2, MapPin, Wrench } from 'lucide-react'
+import { CheckCircle2, Loader2, MapPin, ShieldCheck } from 'lucide-react'
+import { BrandLogo } from '@/components/BrandLogo'
 import { TIPOS_PARCEIRO, TipoParceiro } from '@/types/parceiros'
 import {
   enviarInscricaoParceiroPublica,
@@ -83,50 +84,66 @@ export default function InscricaoParceiroPublica() {
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-600 gap-2">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        Validando convite...
-      </div>
+      <Shell>
+        <div className="flex items-center justify-center gap-2 py-20 text-slate-600">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          Validando convite...
+        </div>
+      </Shell>
     )
   }
 
   if (invalid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-6 text-center space-y-2">
+      <Shell>
+        <div className="max-w-md mx-auto bg-white rounded-2xl border border-slate-200 p-6 text-center space-y-2 shadow-lg">
           <h1 className="text-xl font-bold text-slate-900">Convite inválido</h1>
           <p className="text-sm text-slate-600">{invalid}</p>
         </div>
-      </div>
+      </Shell>
     )
   }
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
+      <Shell>
+        <div className="max-w-md mx-auto bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3 shadow-lg">
           <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
           <h1 className="text-2xl font-bold text-slate-900">Cadastro enviado!</h1>
           <p className="text-sm text-slate-600">
-            Recebemos seus dados. Em breve o time entrará em contato pelo WhatsApp informado.
+            Recebemos seus dados. Em breve o time Replay Sports entrará em contato pelo WhatsApp
+            informado.
           </p>
         </div>
-      </div>
+      </Shell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-emerald-950 py-8 px-4">
-      <div className="max-w-lg mx-auto">
-        <div className="text-center text-white mb-6 space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/30">
-            <Wrench className="w-6 h-6 text-emerald-300" />
+    <Shell>
+      <div className="max-w-lg mx-auto space-y-5">
+        <header className="rounded-2xl bg-white/95 backdrop-blur border border-white/60 shadow-xl shadow-black/20 overflow-hidden">
+          <div className="bg-[radial-gradient(ellipse_at_top,_#1a2278_0%,_#03045e_55%,_#020330_100%)] px-5 py-6 text-center text-white">
+            <div className="flex flex-col items-center gap-3">
+              <BrandLogo size="lg" variant="dark" />
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-200/90">
+                  Replay Sports
+                </p>
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                  Cadastro de Parceiro Instalador
+                </h1>
+                <p className="text-sm text-slate-300 max-w-sm mx-auto leading-relaxed">
+                  Preencha os dados para se candidatar à parceria. Não é necessário criar login.
+                </p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Cadastro de Parceiro Instalador</h1>
-          <p className="text-sm text-slate-300">
-            Preencha os dados para se candidatar à parceria. Não é necessário criar login.
-          </p>
-        </div>
+          <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-600">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            Seus dados são enviados com segurança para nossa equipe comercial
+          </div>
+        </header>
 
         <form
           onSubmit={(e) => void handleSubmit(e)}
@@ -232,11 +249,15 @@ export default function InscricaoParceiroPublica() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full min-h-[48px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm disabled:opacity-60"
+            className="w-full min-h-[48px] rounded-xl bg-[#03045e] hover:bg-[#020330] text-white font-semibold text-sm disabled:opacity-60"
           >
             {saving ? 'Enviando...' : 'Enviar cadastro'}
           </button>
         </form>
+
+        <p className="text-center text-[11px] text-slate-400 pb-4">
+          © {new Date().getFullYear()} Replay Sports · Parceiros Instaladores
+        </p>
       </div>
 
       <style>{`
@@ -249,6 +270,14 @@ export default function InscricaoParceiroPublica() {
           font-size: 0.875rem;
         }
       `}</style>
+    </Shell>
+  )
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#1a2278_0%,_#03045e_40%,_#020330_100%)] py-8 px-4">
+      {children}
     </div>
   )
 }
