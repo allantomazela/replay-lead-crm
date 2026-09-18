@@ -74,7 +74,10 @@ export const instaladores = pgTable('instaladores', {
   nome: text('nome').notNull(),
   tipo: text('tipo').notNull(),
   whatsapp: text('whatsapp').notNull().default(''),
+  telefone: text('telefone').notNull().default(''),
   email: text('email').notNull().default(''),
+  website: text('website').notNull().default(''),
+  cpfCnpj: text('cpf_cnpj').notNull().default(''),
   endereco: text('endereco').notNull().default(''),
   cidade: text('cidade').notNull().default(''),
   estado: text('estado').notNull().default(''),
@@ -99,4 +102,12 @@ export const regioesParceiros = pgTable('regioes_parceiros', {
   totalEncontradas: integer('total_encontradas').notNull().default(0),
   novasUltimaBusca: integer('novas_ultima_busca').notNull().default(0),
   idsAnteriores: jsonb('ids_anteriores').$type<string[]>().notNull().default([]),
+})
+
+export const parceirosConvites = pgTable('parceiros_convites', {
+  id: text('id').primaryKey(),
+  userId: uuid('user_id').notNull(),
+  codigo: text('codigo').notNull().unique(),
+  ativo: boolean('ativo').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

@@ -9,6 +9,7 @@ import Metricas from './pages/Metricas'
 import Mensagens from './pages/Mensagens'
 import ProspeccaoParceiros from './pages/ProspeccaoParceiros'
 import CadastroParceiros from './pages/CadastroParceiros'
+import InscricaoParceiroPublica from './pages/InscricaoParceiroPublica'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import NotFound from './pages/NotFound'
@@ -25,6 +26,9 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
         </Route>
+
+        {/* Formulário público: candidato não precisa de login */}
+        <Route path="/parceiros/inscricao/:codigo" element={<InscricaoParceiroPublica />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>

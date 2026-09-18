@@ -102,3 +102,33 @@ export async function deleteRegiaoParceiro(id: string): Promise<void> {
   await apiFetch(`/api/regioes-parceiros/${id}`, { method: 'DELETE' })
   emitRegioesParceiros(await getRegioesParceiros())
 }
+
+export async function getParceiroConvite(): Promise<{
+  codigo: string
+  ativo: boolean
+  path: string
+  url: string
+}> {
+  return apiFetch('/api/parceiros/convite')
+}
+
+export async function validarConviteParceiro(codigo: string): Promise<{ ok: boolean; codigo: string }> {
+  return apiFetch(`/api/public/parceiros-convite/${encodeURIComponent(codigo)}`)
+}
+
+export async function enviarInscricaoParceiroPublica(payload: {
+  codigo: string
+  nome: string
+  cpfCnpj: string
+  whatsApp: string
+  telefone?: string
+  email?: string
+  website?: string
+  regioesAtendimento: string[]
+  tipo?: string
+}): Promise<{ ok: boolean; id: string; nome: string }> {
+  return apiFetch('/api/public/parceiros-inscricao', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}

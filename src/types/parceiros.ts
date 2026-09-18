@@ -10,7 +10,10 @@ export interface ParceiroInstalador {
   nome: string
   tipo: TipoParceiro | string
   whatsApp: string
+  telefone?: string
   email: string
+  website?: string
+  cpfCnpj?: string
   endereco: string
   cidade: string
   estado: string
@@ -18,7 +21,7 @@ export interface ParceiroInstalador {
   regioesAtendimento: string[]
   observacoes?: string
   status: StatusParceiro | string
-  origem: 'manual' | 'osm' | string
+  origem: 'manual' | 'osm' | 'formulario' | string
   isSample?: boolean
   createdAt: string
 }

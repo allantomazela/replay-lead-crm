@@ -1,5 +1,17 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Plus, Search, Trash2, Pencil, MapPin, X, Save, Users } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  Trash2,
+  Pencil,
+  MapPin,
+  X,
+  Save,
+  Users,
+  Share2,
+  Copy,
+  MessageCircle,
+} from 'lucide-react'
 import { ModuleSwitchLinks } from '@/components/ModuleSwitchLinks'
 import {
   ParceiroInstalador,
@@ -11,6 +23,7 @@ import {
 import {
   addParceiro,
   deleteParceiro,
+  getParceiroConvite,
   getParceiros,
   updateParceiro,
 } from '@/services/parceirosStorage'
@@ -21,7 +34,10 @@ const emptyForm = {
   nome: '',
   tipo: 'Instalador de Câmeras / CFTV' as TipoParceiro,
   whatsApp: '',
+  telefone: '',
   email: '',
+  website: '',
+  cpfCnpj: '',
   endereco: '',
   cidade: '',
   estado: 'SP',
@@ -39,17 +55,36 @@ export default function CadastroParceiros() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [inviteUrl, setInviteUrl] = useState('')
+  const [loadingInvite, setLoadingInvite] = useState(false)
 
   const load = useCallback(async () => {
     setParceiros(await getParceiros())
   }, [])
 
+  const loadInvite = useCallback(async () => {
+    setLoadingInvite(true)
+    try {
+      const convite = await getParceiroConvite()
+      setInviteUrl(`${window.location.origin}${convite.path}`)
+    } catch (err) {
+      toast({
+        title: 'Não foi possível gerar o link',
+        description: err instanceof Error ? err.message : 'Tente novamente',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingInvite(false)
+    }
+  }, [toast])
+
   useEffect(() => {
     void load()
+    void loadInvite()
     const handler = () => void load()
     window.addEventListener('replaylead:parceiros-updated', handler)
     return () => window.removeEventListener('replaylead:parceiros-updated', handler)
-  }, [load])
+  }, [load, loadInvite])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -59,6 +94,7 @@ export default function CadastroParceiros() {
       return (
         p.nome.toLowerCase().includes(q) ||
         p.cidade.toLowerCase().includes(q) ||
+        (p.cpfCnpj || '').includes(q) ||
         (p.regioesAtendimento || []).some((c) => c.toLowerCase().includes(q))
       )
     })
@@ -78,7 +114,10 @@ export default function CadastroParceiros() {
         ? p.tipo
         : 'Instalador de Câmeras / CFTV') as TipoParceiro,
       whatsApp: p.whatsApp,
+      telefone: p.telefone || '',
       email: p.email,
+      website: p.website || '',
+      cpfCnpj: p.cpfCnpj || '',
       endereco: p.endereco,
       cidade: p.cidade,
       estado: p.estado,
@@ -106,7 +145,10 @@ export default function CadastroParceiros() {
       nome: form.nome.trim(),
       tipo: form.tipo,
       whatsApp: form.whatsApp,
+      telefone: form.telefone,
       email: form.email,
+      website: form.website,
+      cpfCnpj: form.cpfCnpj,
       endereco: form.endereco,
       cidade: form.cidade.trim(),
       estado: form.estado.trim().toUpperCase(),
@@ -146,6 +188,28 @@ export default function CadastroParceiros() {
     await load()
   }
 
+  async function copyInviteLink() {
+    let url = inviteUrl
+    if (!url) {
+      const convite = await getParceiroConvite()
+      url = `${window.location.origin}${convite.path}`
+      setInviteUrl(url)
+    }
+    await navigator.clipboard.writeText(url)
+    toast({ title: 'Link copiado', description: 'Cole no WhatsApp ou e-mail do candidato.' })
+  }
+
+  async function shareInviteWhatsApp() {
+    let url = inviteUrl
+    if (!url) {
+      const convite = await getParceiroConvite()
+      url = `${window.location.origin}${convite.path}`
+      setInviteUrl(url)
+    }
+    const text = `Olá! Segue o link para se cadastrar como parceiro instalador conosco. É só preencher o formulário (não precisa criar login):\n\n${url}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -158,7 +222,7 @@ export default function CadastroParceiros() {
             Instaladores e técnicos
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Cadastre parceiros e informe as cidades que cada um atende. Sem funil por enquanto.
+            Cadastre parceiros ou envie o formulário público para o candidato preencher sem login.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -174,13 +238,47 @@ export default function CadastroParceiros() {
         </div>
       </div>
 
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <Share2 className="w-4 h-4 text-emerald-600" />
+          Formulário público para candidatos
+        </div>
+        <p className="text-xs text-slate-500">
+          O candidato abre o link, preenche e o cadastro entra automaticamente na sua lista (origem:
+          formulário).
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            readOnly
+            value={loadingInvite ? 'Gerando link...' : inviteUrl}
+            className="flex-1 min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm bg-slate-50"
+          />
+          <button
+            type="button"
+            onClick={() => void copyInviteLink()}
+            className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-sm font-semibold inline-flex items-center justify-center gap-2"
+          >
+            <Copy className="w-4 h-4" />
+            Copiar link
+          </button>
+          <button
+            type="button"
+            onClick={() => void shareInviteWhatsApp()}
+            className="min-h-[44px] px-4 rounded-xl bg-[#25D366] hover:bg-[#1ebe57] text-white text-sm font-semibold inline-flex items-center justify-center gap-2"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Compartilhar no WhatsApp
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nome, cidade ou região atendida..."
+            placeholder="Buscar por nome, cidade, CPF/CNPJ ou região atendida..."
             className="w-full min-h-[44px] pl-10 pr-3 rounded-xl border border-slate-300 text-sm"
           />
         </div>
@@ -205,8 +303,8 @@ export default function CadastroParceiros() {
               <tr>
                 <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Cidade base</th>
-                <th className="px-4 py-3">Regiões que atende</th>
+                <th className="px-4 py-3">CPF/CNPJ</th>
+                <th className="px-4 py-3">Regiões</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Contato</th>
                 <th className="px-4 py-3 w-24">Ações</th>
@@ -215,12 +313,16 @@ export default function CadastroParceiros() {
             <tbody>
               {filtered.map((p) => (
                 <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-medium text-slate-900">{p.nome}</td>
-                  <td className="px-4 py-3 text-slate-600">{p.tipo}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {p.cidade}
-                    {p.estado ? `/${p.estado}` : ''}
+                  <td className="px-4 py-3 font-medium text-slate-900">
+                    {p.nome}
+                    {p.origem === 'formulario' && (
+                      <span className="ml-2 text-[10px] font-bold uppercase text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+                        Formulário
+                      </span>
+                    )}
                   </td>
+                  <td className="px-4 py-3 text-slate-600">{p.tipo}</td>
+                  <td className="px-4 py-3 text-slate-600">{p.cpfCnpj || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1 max-w-xs">
                       {(p.regioesAtendimento || []).length === 0 ? (
@@ -267,7 +369,8 @@ export default function CadastroParceiros() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                    Nenhum parceiro cadastrado ainda. Use a prospecção OSM ou cadastre manualmente.
+                    Nenhum parceiro cadastrado ainda. Use a prospecção, o formulário público ou
+                    cadastre manualmente.
                   </td>
                 </tr>
               )}
@@ -284,7 +387,11 @@ export default function CadastroParceiros() {
               <h3 className="text-lg font-bold text-slate-900">
                 {editingId ? 'Editar parceiro' : 'Novo parceiro'}
               </h3>
-              <button type="button" onClick={() => setIsFormOpen(false)} className="p-1 text-slate-400">
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="p-1 text-slate-400"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -325,6 +432,13 @@ export default function CadastroParceiros() {
                   </select>
                 </Field>
               </div>
+              <Field label="CPF ou CNPJ">
+                <input
+                  value={form.cpfCnpj}
+                  onChange={(e) => setForm({ ...form, cpfCnpj: e.target.value })}
+                  className="field"
+                />
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="WhatsApp">
                   <input
@@ -333,11 +447,27 @@ export default function CadastroParceiros() {
                     className="field"
                   />
                 </Field>
+                <Field label="Telefone">
+                  <input
+                    value={form.telefone}
+                    onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                    className="field"
+                  />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <Field label="E-mail">
                   <input
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="field"
+                  />
+                </Field>
+                <Field label="Site">
+                  <input
+                    value={form.website}
+                    onChange={(e) => setForm({ ...form, website: e.target.value })}
                     className="field"
                   />
                 </Field>

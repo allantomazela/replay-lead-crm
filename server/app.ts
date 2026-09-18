@@ -7,6 +7,7 @@ import {
   interacoes,
   instaladores,
   messageTemplates,
+  parceirosConvites,
   regioesParceiros,
   regioesSalvas,
   userPreferences,
@@ -157,7 +158,7 @@ app.use(
 app.get('/api/health', (c) => c.json({ ok: true }))
 
 app.use('/api/*', async (c, next) => {
-  if (c.req.path === '/api/health') {
+  if (c.req.path === '/api/health' || c.req.path.startsWith('/api/public/')) {
     return next()
   }
   return requireAuth(c, next)
@@ -555,7 +556,10 @@ function mapInstalador(row: typeof instaladores.$inferSelect) {
     nome: row.nome,
     tipo: row.tipo,
     whatsApp: row.whatsapp,
+    telefone: row.telefone || '',
     email: row.email,
+    website: row.website || '',
+    cpfCnpj: row.cpfCnpj || '',
     endereco: row.endereco,
     cidade: row.cidade,
     estado: row.estado,
@@ -566,6 +570,28 @@ function mapInstalador(row: typeof instaladores.$inferSelect) {
     isSample: row.isSample,
     createdAt: toIso(row.createdAt) || new Date().toISOString(),
   }
+}
+
+function onlyDigits(value: unknown): string {
+  return String(value || '').replace(/\D/g, '')
+}
+
+function isValidCpfCnpj(digits: string): boolean {
+  return digits.length === 11 || digits.length === 14
+}
+
+function parseCidadesAtendimento(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map((c) => String(c).trim()).filter(Boolean)
+  }
+  return String(raw || '')
+    .split(/[,;\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function makeInviteCode() {
+  return Math.random().toString(36).slice(2, 6) + Math.random().toString(36).slice(2, 8)
 }
 
 function mapRegiaoParceiro(row: typeof regioesParceiros.$inferSelect) {
@@ -633,7 +659,10 @@ app.post('/api/instaladores', async (c) => {
       nome: body.nome,
       tipo: body.tipo || 'Instalador de Câmeras / CFTV',
       whatsapp: body.whatsApp || body.whatsapp || '',
+      telefone: body.telefone || '',
       email: body.email || '',
+      website: body.website || '',
+      cpfCnpj: onlyDigits(body.cpfCnpj || body.cpf_cnpj || ''),
       endereco: body.endereco || '',
       cidade: body.cidade || '',
       estado: body.estado || '',
@@ -666,7 +695,10 @@ app.post('/api/instaladores/bulk', async (c) => {
     nome: String(item.nome || ''),
     tipo: String(item.tipo || 'Instalador de Câmeras / CFTV'),
     whatsapp: String(item.whatsApp || item.whatsapp || ''),
+    telefone: String(item.telefone || ''),
     email: String(item.email || ''),
+    website: String(item.website || ''),
+    cpfCnpj: onlyDigits(item.cpfCnpj || item.cpf_cnpj || ''),
     endereco: String(item.endereco || ''),
     cidade: String(item.cidade || ''),
     estado: String(item.estado || ''),
@@ -698,7 +730,12 @@ app.patch('/api/instaladores/:id', async (c) => {
   if (body.whatsApp !== undefined || body.whatsapp !== undefined) {
     updates.whatsapp = body.whatsApp ?? body.whatsapp
   }
+  if (body.telefone !== undefined) updates.telefone = body.telefone
   if (body.email !== undefined) updates.email = body.email
+  if (body.website !== undefined) updates.website = body.website
+  if (body.cpfCnpj !== undefined || body.cpf_cnpj !== undefined) {
+    updates.cpfCnpj = onlyDigits(body.cpfCnpj ?? body.cpf_cnpj)
+  }
   if (body.endereco !== undefined) updates.endereco = body.endereco
   if (body.cidade !== undefined) updates.cidade = body.cidade
   if (body.estado !== undefined) updates.estado = body.estado
@@ -794,4 +831,127 @@ app.delete('/api/regioes-parceiros/:id', async (c) => {
     .returning()
   if (!rows[0]) return c.json({ error: 'Região não encontrada' }, 404)
   return c.json({ ok: true })
+})
+
+// ---- Convite público de parceiros ----
+app.get('/api/parceiros/convite', async (c) => {
+  const userId = c.get('userId')
+  const existing = await db
+    .select()
+    .from(parceirosConvites)
+    .where(eq(parceirosConvites.userId, userId))
+    .limit(1)
+
+  let row = existing[0]
+  if (!row) {
+    const [created] = await db
+      .insert(parceirosConvites)
+      .values({
+        id: newId('convite'),
+        userId,
+        codigo: makeInviteCode(),
+        ativo: true,
+        createdAt: new Date(),
+      })
+      .returning()
+    row = created
+  } else if (!row.ativo) {
+    const [updated] = await db
+      .update(parceirosConvites)
+      .set({ ativo: true })
+      .where(eq(parceirosConvites.id, row.id))
+      .returning()
+    row = updated
+  }
+
+  const origin = process.env.APP_ORIGIN || 'https://www.sistemascuesta.com.br'
+  const path = `/parceiros/inscricao/${row.codigo}`
+  return c.json({
+    codigo: row.codigo,
+    ativo: row.ativo,
+    path,
+    url: `${origin.replace(/\/$/, '')}${path}`,
+  })
+})
+
+app.get('/api/public/parceiros-convite/:codigo', async (c) => {
+  const codigo = c.req.param('codigo').trim().toLowerCase()
+  const rows = await db
+    .select()
+    .from(parceirosConvites)
+    .where(eq(parceirosConvites.codigo, codigo))
+    .limit(1)
+  const row = rows[0]
+  if (!row || !row.ativo) {
+    return c.json({ error: 'Link de inscrição inválido ou desativado.' }, 404)
+  }
+  return c.json({ ok: true, codigo: row.codigo })
+})
+
+app.post('/api/public/parceiros-inscricao', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const codigo = String(body.codigo || '').trim().toLowerCase()
+  const nome = String(body.nome || '').trim()
+  const cpfCnpj = onlyDigits(body.cpfCnpj || body.cpf_cnpj)
+  const whatsapp = onlyDigits(body.whatsApp || body.whatsapp)
+  const telefone = onlyDigits(body.telefone)
+  const email = String(body.email || '').trim()
+  const website = String(body.website || body.site || '').trim()
+  const regioesAtendimento = parseCidadesAtendimento(body.regioesAtendimento || body.cidades)
+  const tipo = String(body.tipo || 'Instalador de Câmeras / CFTV')
+
+  if (!codigo) return c.json({ error: 'Código do convite obrigatório.' }, 400)
+  if (!nome) return c.json({ error: 'Informe o nome completo.' }, 400)
+  if (!isValidCpfCnpj(cpfCnpj)) {
+    return c.json({ error: 'CPF ou CNPJ inválido. Use 11 ou 14 dígitos.' }, 400)
+  }
+  if (!whatsapp || whatsapp.length < 10) {
+    return c.json({ error: 'Informe um WhatsApp válido.' }, 400)
+  }
+  if (regioesAtendimento.length === 0) {
+    return c.json({ error: 'Informe ao menos uma cidade de atendimento.' }, 400)
+  }
+
+  const convites = await db
+    .select()
+    .from(parceirosConvites)
+    .where(eq(parceirosConvites.codigo, codigo))
+    .limit(1)
+  const convite = convites[0]
+  if (!convite || !convite.ativo) {
+    return c.json({ error: 'Link de inscrição inválido ou desativado.' }, 404)
+  }
+
+  const now = new Date()
+  const cidadePrincipal = regioesAtendimento[0]
+  const [row] = await db
+    .insert(instaladores)
+    .values({
+      id: newId('instalador'),
+      userId: convite.userId,
+      nome,
+      tipo,
+      whatsapp: whatsapp.length <= 11 ? `55${whatsapp}` : whatsapp,
+      telefone: telefone
+        ? telefone.length <= 11
+          ? `55${telefone}`
+          : telefone
+        : '',
+      email,
+      website,
+      cpfCnpj,
+      endereco: '',
+      cidade: cidadePrincipal,
+      estado: '',
+      regioesAtendimento,
+      observacoes: 'Cadastro via formulário público de parceria.',
+      status: 'A Contatar',
+      origem: 'formulario',
+      isSample: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+
+  return c.json({ ok: true, id: row.id, nome: row.nome }, 201)
 })
